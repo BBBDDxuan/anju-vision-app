@@ -1,0 +1,65 @@
+00:00 +0: loading D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart
+00:00 +0: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification bridge reads permission results and opens native settings
+00:00 +1: D:/AndroidDev/app-v1.2.1/test/api_test.dart: all user routes use Bearer; health is public; contract bodies match
+00:00 +2: D:/AndroidDev/app-v1.2.1/test/api_test.dart: all user routes use Bearer; health is public; contract bodies match
+00:00 +3: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +4: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +5: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +6: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +7: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +8: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +9: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +10: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +11: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +12: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +13: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +14: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +15: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +16: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +17: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +18: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +19: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +20: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +21: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +22: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +23: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +24: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +25: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +26: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +27: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +28: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +29: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +30: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +31: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +32: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +33: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +34: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +35: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +36: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +36: D:/AndroidDev/app-v1.2.1/test/original_service_test.dart: live original backend query, memory, replay, frame and video address
+  Skip: Run only against tool/original_api_fixture.py
+00:01 +36 ~1: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +36 ~1: D:/AndroidDev/app-v1.2.1/test/video_alerts_integration_test.dart: original backend safety API, evidence frame and acknowledgement roundtrip
+  Skip: Requires isolated original backend fixture
+00:01 +36 ~2: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +37 ~2: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +38 ~2: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +39 ~2: D:/AndroidDev/app-v1.2.1/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +40 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:01 +41 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:01 +42 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:01 +43 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +44 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +45 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +46 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +47 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +48 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +49 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:04 +50 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:04 +51 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:04 +52 ~2: D:/AndroidDev/app-v1.2.1/test/product_test.dart: three areas separate events and support object search
+00:04 +53 ~2: D:/AndroidDev/app-v1.2.1/test/navigation_manual_test.dart: offline manual loads full content and searches chapters
+00:04 +54 ~2: D:/AndroidDev/app-v1.2.1/test/product_test.dart: member profile can be edited from its card
+00:05 +55 ~2: D:/AndroidDev/app-v1.2.1/test/product_test.dart: small display with large text and tablet remain usable
+00:06 +56 ~2: D:/AndroidDev/app-v1.2.1/test/product_test.dart: camera workspace is usable on a small display and has no photo analysis
+00:06 +57 ~2: All tests passed!

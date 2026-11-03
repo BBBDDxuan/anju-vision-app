@@ -1,0 +1,598 @@
+Starting a Gradle Daemon, 1 busy Daemon could not be reused, use --status for details
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+> Configure project :app
+WARNING: The option setting 'android.overridePathCheck=true' is experimental.
+The current default is 'false'.
+WARNING: The option setting 'android.builtInKotlin=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.newDsl=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':app' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :android_file_picker
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':android_file_picker' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :firebase_core
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':firebase_core' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :firebase_messaging
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':firebase_messaging' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :flutter_secure_storage
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':flutter_secure_storage' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :jni
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':jni' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :jni_flutter
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':jni_flutter' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :video_player_android
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':video_player_android' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :webview_flutter_android
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':webview_flutter_android' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): firebase_core
+Future versions of Flutter will fail to build if your app uses plugins that apply KGP.
+
+Please check the changelogs of these plugins and upgrade to a version that supports Built-in Kotlin.
+If no such version exists, report the issue to the plugin. If necessary, here is a guide on filing
+an issue against a plugin: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers#report-incompatible-kotlin-gradle-plugin-usage-to-plugin-authors
+
+If you are a plugin author, please migrate your plugin to Built-in Kotlin using this guide: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+
+> Task :android_file_picker:preBuild UP-TO-DATE
+> Task :android_file_picker:preReleaseBuild UP-TO-DATE
+> Task :android_file_picker:checkReleaseAarMetadata UP-TO-DATE
+> Task :android_file_picker:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :android_file_picker:mergeReleaseNativeLibs NO-SOURCE
+> Task :android_file_picker:stripReleaseDebugSymbols NO-SOURCE
+> Task :android_file_picker:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :android_file_picker:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :android_file_picker:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :android_file_picker:generateReleaseResources UP-TO-DATE
+> Task :android_file_picker:packageReleaseResources UP-TO-DATE
+> Task :android_file_picker:processReleaseNavigationResources UP-TO-DATE
+> Task :android_file_picker:parseReleaseLocalResources UP-TO-DATE
+> Task :android_file_picker:generateReleaseRFile UP-TO-DATE
+> Task :android_file_picker:compileReleaseKotlin UP-TO-DATE
+> Task :android_file_picker:extractReleaseAnnotations UP-TO-DATE
+> Task :android_file_picker:generateReleaseAssets UP-TO-DATE
+> Task :android_file_picker:mergeReleaseAssets UP-TO-DATE
+> Task :android_file_picker:javaPreCompileRelease UP-TO-DATE
+> Task :android_file_picker:compileReleaseJavaWithJavac NO-SOURCE
+> Task :android_file_picker:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :android_file_picker:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :android_file_picker:prepareLintJarForPublish UP-TO-DATE
+> Task :android_file_picker:prepareReleaseArtProfile UP-TO-DATE
+> Task :android_file_picker:processReleaseManifest UP-TO-DATE
+> Task :android_file_picker:processReleaseJavaRes UP-TO-DATE
+> Task :android_file_picker:mergeReleaseJavaResource UP-TO-DATE
+> Task :android_file_picker:syncReleaseLibJars UP-TO-DATE
+> Task :android_file_picker:writeReleaseAarMetadata UP-TO-DATE
+> Task :android_file_picker:bundleReleaseAar UP-TO-DATE
+> Task :android_file_picker:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :android_file_picker:mergeReleaseResources UP-TO-DATE
+> Task :android_file_picker:verifyReleaseResources UP-TO-DATE
+> Task :android_file_picker:assembleRelease UP-TO-DATE
+> Task :app:ReleaseMinSdkCheck
+> Task :android_file_picker:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :app:validateCompileSdkVersion
+> Task :app:preBuild
+> Task :app:preReleaseBuild
+> Task :app:configureCMakeRelease[arm64-v8a]
+> Task :app:buildCMakeRelease[arm64-v8a]
+> Task :app:configureCMakeRelease[armeabi-v7a]
+> Task :app:buildCMakeRelease[armeabi-v7a]
+> Task :app:configureCMakeRelease[x86_64]
+> Task :app:buildCMakeRelease[x86_64]
+
+> Task :app:compileFlutterBuildRelease
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 14512 bytes (99.1% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+
+> Task :app:copyJniLibsflutterBuildRelease
+> Task :app:mergeReleaseJniLibFolders
+> Task :firebase_core:preBuild UP-TO-DATE
+> Task :firebase_core:preReleaseBuild UP-TO-DATE
+> Task :firebase_core:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :firebase_core:mergeReleaseNativeLibs NO-SOURCE
+> Task :firebase_core:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :firebase_messaging:preBuild UP-TO-DATE
+> Task :firebase_messaging:preReleaseBuild UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseNativeLibs NO-SOURCE
+> Task :firebase_messaging:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :flutter_secure_storage:preBuild UP-TO-DATE
+> Task :flutter_secure_storage:preReleaseBuild UP-TO-DATE
+> Task :flutter_secure_storage:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :flutter_secure_storage:mergeReleaseNativeLibs NO-SOURCE
+> Task :flutter_secure_storage:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :jni:preBuild UP-TO-DATE
+> Task :jni:preReleaseBuild UP-TO-DATE
+> Task :jni:configureCMakeRelWithDebInfo[arm64-v8a]
+> Task :jni:buildCMakeRelWithDebInfo[arm64-v8a]
+> Task :jni:configureCMakeRelWithDebInfo[armeabi-v7a]
+> Task :jni:buildCMakeRelWithDebInfo[armeabi-v7a]
+> Task :jni:configureCMakeRelWithDebInfo[x86]
+> Task :jni:buildCMakeRelWithDebInfo[x86]
+> Task :jni:configureCMakeRelWithDebInfo[x86_64]
+> Task :jni:buildCMakeRelWithDebInfo[x86_64]
+> Task :jni:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :jni:mergeReleaseNativeLibs UP-TO-DATE
+> Task :jni:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :jni_flutter:preBuild UP-TO-DATE
+> Task :jni_flutter:preReleaseBuild UP-TO-DATE
+> Task :jni_flutter:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :jni_flutter:mergeReleaseNativeLibs NO-SOURCE
+> Task :jni_flutter:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :video_player_android:preBuild UP-TO-DATE
+> Task :video_player_android:preReleaseBuild UP-TO-DATE
+> Task :video_player_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :video_player_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :video_player_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :webview_flutter_android:preBuild UP-TO-DATE
+> Task :webview_flutter_android:preReleaseBuild UP-TO-DATE
+> Task :webview_flutter_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :webview_flutter_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :webview_flutter_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :android_file_picker:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :firebase_core:generateReleaseBuildConfig UP-TO-DATE
+> Task :firebase_core:generateReleaseResources UP-TO-DATE
+> Task :firebase_core:packageReleaseResources UP-TO-DATE
+> Task :firebase_core:processReleaseNavigationResources UP-TO-DATE
+> Task :firebase_core:parseReleaseLocalResources UP-TO-DATE
+> Task :firebase_core:generateReleaseRFile UP-TO-DATE
+> Task :firebase_core:compileReleaseKotlin UP-TO-DATE
+> Task :firebase_core:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_core:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :firebase_core:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :firebase_messaging:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :firebase_messaging:generateReleaseBuildConfig UP-TO-DATE
+> Task :firebase_messaging:generateReleaseResources UP-TO-DATE
+> Task :firebase_messaging:packageReleaseResources UP-TO-DATE
+> Task :firebase_messaging:processReleaseNavigationResources UP-TO-DATE
+> Task :firebase_messaging:parseReleaseLocalResources UP-TO-DATE
+> Task :firebase_messaging:generateReleaseRFile UP-TO-DATE
+> Task :firebase_messaging:compileReleaseKotlin NO-SOURCE
+> Task :firebase_messaging:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_messaging:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :firebase_messaging:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_core:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :firebase_core:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :flutter_secure_storage:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :flutter_secure_storage:generateReleaseBuildConfig UP-TO-DATE
+> Task :flutter_secure_storage:generateReleaseResources UP-TO-DATE
+> Task :flutter_secure_storage:packageReleaseResources UP-TO-DATE
+> Task :flutter_secure_storage:processReleaseNavigationResources UP-TO-DATE
+> Task :flutter_secure_storage:parseReleaseLocalResources UP-TO-DATE
+> Task :flutter_secure_storage:generateReleaseRFile UP-TO-DATE
+> Task :flutter_secure_storage:compileReleaseKotlin NO-SOURCE
+> Task :flutter_secure_storage:javaPreCompileRelease UP-TO-DATE
+> Task :flutter_secure_storage:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :flutter_secure_storage:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :flutter_secure_storage:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :jni:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :jni:generateReleaseResources UP-TO-DATE
+> Task :jni:packageReleaseResources UP-TO-DATE
+> Task :jni:processReleaseNavigationResources UP-TO-DATE
+> Task :jni:parseReleaseLocalResources UP-TO-DATE
+> Task :jni:generateReleaseRFile UP-TO-DATE
+> Task :jni:compileReleaseKotlin NO-SOURCE
+> Task :jni:javaPreCompileRelease UP-TO-DATE
+> Task :jni:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :jni:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :jni_flutter:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :jni_flutter:generateReleaseResources UP-TO-DATE
+> Task :jni_flutter:packageReleaseResources UP-TO-DATE
+> Task :jni_flutter:processReleaseNavigationResources UP-TO-DATE
+> Task :jni_flutter:parseReleaseLocalResources UP-TO-DATE
+> Task :jni_flutter:generateReleaseRFile UP-TO-DATE
+> Task :jni_flutter:compileReleaseKotlin NO-SOURCE
+> Task :jni_flutter:javaPreCompileRelease UP-TO-DATE
+> Task :jni_flutter:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :jni_flutter:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :jni_flutter:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :jni:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :jni:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :video_player_android:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :video_player_android:generateReleaseResources UP-TO-DATE
+> Task :video_player_android:packageReleaseResources UP-TO-DATE
+> Task :video_player_android:processReleaseNavigationResources UP-TO-DATE
+> Task :video_player_android:parseReleaseLocalResources UP-TO-DATE
+> Task :video_player_android:generateReleaseRFile UP-TO-DATE
+> Task :video_player_android:compileReleaseKotlin UP-TO-DATE
+> Task :video_player_android:javaPreCompileRelease UP-TO-DATE
+> Task :video_player_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :video_player_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :video_player_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :webview_flutter_android:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :webview_flutter_android:generateReleaseResources UP-TO-DATE
+> Task :webview_flutter_android:packageReleaseResources UP-TO-DATE
+> Task :webview_flutter_android:processReleaseNavigationResources UP-TO-DATE
+> Task :webview_flutter_android:parseReleaseLocalResources UP-TO-DATE
+> Task :webview_flutter_android:generateReleaseRFile UP-TO-DATE
+> Task :app:mergeReleaseNativeLibs
+> Task :app:stripReleaseDebugSymbols
+> Task :app:extractReleaseNativeSymbolTables
+> Task :app:mergeReleaseNativeDebugMetadata
+> Task :webview_flutter_android:javaPreCompileRelease
+> Task :android_file_picker:bundleLibCompileToJarRelease
+> Task :android_file_picker:bundleLibRuntimeToJarRelease
+> Task :app:buildKotlinToolingMetadata
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:cleanMergeReleaseAssets UP-TO-DATE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :firebase_core:generateReleaseAssets UP-TO-DATE
+> Task :firebase_core:mergeReleaseAssets
+> Task :firebase_messaging:generateReleaseAssets UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseAssets
+> Task :flutter_secure_storage:generateReleaseAssets UP-TO-DATE
+> Task :flutter_secure_storage:mergeReleaseAssets
+> Task :jni:generateReleaseAssets UP-TO-DATE
+> Task :jni:mergeReleaseAssets
+> Task :jni_flutter:generateReleaseAssets UP-TO-DATE
+> Task :jni_flutter:mergeReleaseAssets
+> Task :video_player_android:generateReleaseAssets UP-TO-DATE
+> Task :video_player_android:mergeReleaseAssets
+> Task :webview_flutter_android:generateReleaseAssets UP-TO-DATE
+> Task :webview_flutter_android:mergeReleaseAssets
+> Task :app:mergeReleaseAssets
+> Task :app:copyFlutterAssetsRelease
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :webview_flutter_android:compileReleaseKotlin
+> Task :app:processReleaseNavigationResources
+> Task :app:parseReleaseLocalResources
+> Task :app:generateReleaseRFile
+> Task :firebase_messaging:bundleLibCompileToJarRelease
+> Task :flutter_secure_storage:bundleLibCompileToJarRelease
+> Task :jni_flutter:bundleLibCompileToJarRelease
+> Task :video_player_android:bundleLibCompileToJarRelease
+> Task :app:javaPreCompileRelease
+> Task :firebase_core:prepareReleaseArtProfile
+> Task :firebase_messaging:prepareReleaseArtProfile
+> Task :flutter_secure_storage:prepareReleaseArtProfile
+> Task :jni:prepareReleaseArtProfile
+> Task :jni_flutter:prepareReleaseArtProfile
+> Task :video_player_android:prepareReleaseArtProfile
+> Task :webview_flutter_android:prepareReleaseArtProfile
+> Task :app:mergeReleaseArtProfile
+> Task :android_file_picker:compileReleaseLibraryResources
+> Task :firebase_core:writeReleaseAarMetadata
+> Task :firebase_messaging:writeReleaseAarMetadata
+> Task :flutter_secure_storage:writeReleaseAarMetadata
+> Task :jni:writeReleaseAarMetadata
+> Task :jni_flutter:writeReleaseAarMetadata
+> Task :video_player_android:writeReleaseAarMetadata
+> Task :webview_flutter_android:writeReleaseAarMetadata
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:compileReleaseNavigationResources
+> Task :app:mergeReleaseResources
+> Task :webview_flutter_android:compileReleaseJavaWithJavac
+> Task :webview_flutter_android:mergeReleaseGeneratedProguardFiles
+> Task :webview_flutter_android:exportReleaseConsumerProguardFiles
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :android_file_picker:extractDeepLinksRelease
+> Task :app:extractDeepLinksRelease
+> Task :firebase_core:extractDeepLinksRelease
+> Task :webview_flutter_android:bundleLibCompileToJarRelease
+
+> Task :firebase_core:processReleaseManifest
+package="io.flutter.plugins.firebase.core" found in source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\firebase_core-5.1.0\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.firebase.core" from the source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\firebase_core-5.1.0\android\src\main\AndroidManifest.xml.
+
+> Task :firebase_messaging:extractDeepLinksRelease
+
+> Task :firebase_messaging:processReleaseManifest
+package="io.flutter.plugins.firebase.messaging" found in source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\firebase_messaging-17.0.1\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.firebase.messaging" from the source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\firebase_messaging-17.0.1\android\src\main\AndroidManifest.xml.
+
+> Task :flutter_secure_storage:extractDeepLinksRelease
+> Task :flutter_secure_storage:processReleaseManifest
+> Task :jni:extractDeepLinksRelease
+
+> Task :jni:processReleaseManifest
+package="com.github.dart_lang.jni" found in source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\jni-1.1.1\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.github.dart_lang.jni" from the source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\jni-1.1.1\android\src\main\AndroidManifest.xml.
+
+> Task :jni_flutter:extractDeepLinksRelease
+
+> Task :jni_flutter:processReleaseManifest
+package="com.github.dart_lang.jni_flutter" found in source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\jni_flutter-1.0.4+1\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.github.dart_lang.jni_flutter" from the source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\jni_flutter-1.0.4+1\android\src\main\AndroidManifest.xml.
+
+> Task :video_player_android:extractDeepLinksRelease
+
+> Task :video_player_android:processReleaseManifest
+package="io.flutter.plugins.videoplayer" found in source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\video_player_android-2.12.2\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.videoplayer" from the source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\video_player_android-2.12.2\android\src\main\AndroidManifest.xml.
+
+> Task :webview_flutter_android:extractDeepLinksRelease
+
+> Task :webview_flutter_android:processReleaseManifest
+package="io.flutter.plugins.webviewflutter" found in source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\webview_flutter_android-4.14.1\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.webviewflutter" from the source AndroidManifest.xml: D:\AndroidDev\cache\pub\hosted\pub.dev\webview_flutter_android-4.14.1\android\src\main\AndroidManifest.xml.
+
+> Task :app:processReleaseMainManifest
+> Task :app:outputReleaseAppLinkSettings
+> Task :app:processReleaseManifest
+> Task :app:compileReleaseKotlin
+> Task :app:processReleaseManifestForPackage
+> Task :app:compileReleaseJavaWithJavac
+> Task :firebase_core:mapReleaseSourceSetPaths
+> Task :firebase_core:compileReleaseLibraryResources
+> Task :firebase_messaging:mapReleaseSourceSetPaths
+> Task :firebase_messaging:compileReleaseLibraryResources
+> Task :flutter_secure_storage:mapReleaseSourceSetPaths
+> Task :flutter_secure_storage:compileReleaseLibraryResources
+> Task :jni:mapReleaseSourceSetPaths
+> Task :jni:compileReleaseLibraryResources
+> Task :jni_flutter:mapReleaseSourceSetPaths
+> Task :jni_flutter:compileReleaseLibraryResources
+> Task :video_player_android:mapReleaseSourceSetPaths
+> Task :video_player_android:compileReleaseLibraryResources
+> Task :webview_flutter_android:mapReleaseSourceSetPaths
+> Task :webview_flutter_android:compileReleaseLibraryResources
+> Task :firebase_core:bundleLibRuntimeToJarRelease
+> Task :firebase_messaging:bundleLibRuntimeToJarRelease
+> Task :flutter_secure_storage:bundleLibRuntimeToJarRelease
+> Task :jni:bundleLibRuntimeToJarRelease
+> Task :jni_flutter:bundleLibRuntimeToJarRelease
+> Task :video_player_android:bundleLibRuntimeToJarRelease
+> Task :webview_flutter_android:bundleLibRuntimeToJarRelease
+> Task :app:extractProguardFiles
+> Task :app:processReleaseJavaRes
+> Task :firebase_core:processReleaseJavaRes
+> Task :firebase_messaging:processReleaseJavaRes NO-SOURCE
+> Task :flutter_secure_storage:processReleaseJavaRes NO-SOURCE
+> Task :jni:processReleaseJavaRes NO-SOURCE
+> Task :jni_flutter:processReleaseJavaRes NO-SOURCE
+> Task :video_player_android:processReleaseJavaRes
+> Task :webview_flutter_android:processReleaseJavaRes
+> Task :app:processReleaseResources
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:mergeReleaseGeneratedProguardFiles
+> Task :app:mergeReleaseStartupProfile
+> Task :app:compressReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :android_file_picker:extractProguardFiles
+> Task :app:mergeReleaseJavaResource
+> Task :android_file_picker:generateReleaseLintVitalModel
+> Task :app:minifyReleaseWithR8
+> Task :android_file_picker:lintVitalAnalyzeRelease
+> Task :app:compileReleaseArtProfile
+> Task :android_file_picker:createFullJarRelease
+> Task :android_file_picker:generateReleaseLintModel
+> Task :firebase_core:createFullJarRelease
+> Task :firebase_core:extractProguardFiles
+> Task :firebase_core:generateReleaseLintModel
+> Task :firebase_core:prepareLintJarForPublish
+> Task :firebase_messaging:createFullJarRelease
+> Task :firebase_messaging:extractProguardFiles
+> Task :firebase_messaging:generateReleaseLintModel
+> Task :firebase_messaging:prepareLintJarForPublish
+> Task :flutter_secure_storage:createFullJarRelease
+> Task :flutter_secure_storage:extractProguardFiles
+> Task :flutter_secure_storage:generateReleaseLintModel
+> Task :flutter_secure_storage:prepareLintJarForPublish
+> Task :jni:createFullJarRelease
+> Task :jni:extractProguardFiles
+> Task :jni:generateReleaseLintModel
+> Task :jni:prepareLintJarForPublish
+> Task :jni_flutter:createFullJarRelease
+> Task :jni_flutter:extractProguardFiles
+> Task :jni_flutter:generateReleaseLintModel
+> Task :jni_flutter:prepareLintJarForPublish
+> Task :video_player_android:createFullJarRelease
+> Task :video_player_android:extractProguardFiles
+> Task :video_player_android:generateReleaseLintModel
+> Task :video_player_android:prepareLintJarForPublish
+> Task :webview_flutter_android:createFullJarRelease
+> Task :webview_flutter_android:extractProguardFiles
+> Task :webview_flutter_android:generateReleaseLintModel
+> Task :webview_flutter_android:prepareLintJarForPublish
+> Task :android_file_picker:bundleReleaseLocalLintAar
+> Task :app:generateReleaseLintVitalReportModel
+> Task :firebase_messaging:stripReleaseDebugSymbols NO-SOURCE
+> Task :firebase_messaging:copyReleaseJniLibsProjectAndLocalJars
+> Task :firebase_messaging:extractDeepLinksForAarRelease
+> Task :firebase_messaging:checkReleaseAarMetadata
+> Task :firebase_messaging:extractReleaseAnnotations
+> Task :firebase_messaging:mergeReleaseConsumerProguardFiles
+> Task :firebase_messaging:mergeReleaseJavaResource
+> Task :firebase_core:checkReleaseAarMetadata
+> Task :firebase_messaging:syncReleaseLibJars
+> Task :firebase_messaging:bundleReleaseLocalLintAar
+> Task :firebase_core:stripReleaseDebugSymbols NO-SOURCE
+> Task :firebase_core:copyReleaseJniLibsProjectAndLocalJars
+> Task :firebase_core:extractDeepLinksForAarRelease
+> Task :firebase_core:extractReleaseAnnotations
+> Task :firebase_core:mergeReleaseConsumerProguardFiles
+> Task :flutter_secure_storage:checkReleaseAarMetadata
+> Task :flutter_secure_storage:stripReleaseDebugSymbols NO-SOURCE
+> Task :flutter_secure_storage:copyReleaseJniLibsProjectAndLocalJars
+> Task :firebase_core:mergeReleaseJavaResource
+> Task :flutter_secure_storage:extractDeepLinksForAarRelease
+> Task :firebase_core:syncReleaseLibJars
+> Task :firebase_core:bundleReleaseLocalLintAar
+> Task :flutter_secure_storage:extractReleaseAnnotations
+> Task :flutter_secure_storage:mergeReleaseConsumerProguardFiles
+> Task :flutter_secure_storage:mergeReleaseJavaResource
+> Task :jni_flutter:checkReleaseAarMetadata
+> Task :flutter_secure_storage:syncReleaseLibJars
+> Task :flutter_secure_storage:bundleReleaseLocalLintAar
+> Task :jni_flutter:stripReleaseDebugSymbols NO-SOURCE
+> Task :jni_flutter:copyReleaseJniLibsProjectAndLocalJars
+> Task :jni_flutter:extractDeepLinksForAarRelease
+> Task :jni_flutter:extractReleaseAnnotations
+> Task :jni_flutter:mergeReleaseConsumerProguardFiles
+> Task :jni_flutter:mergeReleaseJavaResource
+> Task :jni:checkReleaseAarMetadata
+> Task :jni_flutter:syncReleaseLibJars
+> Task :jni_flutter:bundleReleaseLocalLintAar
+> Task :jni:extractDeepLinksForAarRelease
+> Task :jni:extractReleaseAnnotations
+> Task :jni:mergeReleaseConsumerProguardFiles
+> Task :jni:mergeReleaseJavaResource
+> Task :jni:syncReleaseLibJars
+> Task :jni:stripReleaseDebugSymbols
+> Task :video_player_android:checkReleaseAarMetadata
+> Task :video_player_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :video_player_android:copyReleaseJniLibsProjectAndLocalJars
+> Task :video_player_android:extractDeepLinksForAarRelease
+> Task :video_player_android:extractReleaseAnnotations
+> Task :jni:copyReleaseJniLibsProjectAndLocalJars
+> Task :video_player_android:mergeReleaseConsumerProguardFiles
+> Task :jni:bundleReleaseLocalLintAar
+> Task :video_player_android:mergeReleaseJavaResource
+> Task :video_player_android:syncReleaseLibJars
+> Task :video_player_android:bundleReleaseLocalLintAar
+> Task :webview_flutter_android:checkReleaseAarMetadata
+> Task :webview_flutter_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :webview_flutter_android:copyReleaseJniLibsProjectAndLocalJars
+> Task :webview_flutter_android:extractDeepLinksForAarRelease
+> Task :webview_flutter_android:extractReleaseAnnotations
+> Task :webview_flutter_android:mergeReleaseConsumerProguardFiles
+> Task :android_file_picker:writeReleaseLintModelMetadata
+> Task :webview_flutter_android:mergeReleaseJavaResource
+> Task :webview_flutter_android:syncReleaseLibJars
+> Task :webview_flutter_android:bundleReleaseLocalLintAar
+> Task :firebase_core:writeReleaseLintModelMetadata
+> Task :firebase_messaging:lintVitalAnalyzeRelease
+> Task :firebase_messaging:writeReleaseLintModelMetadata
+> Task :firebase_core:lintVitalAnalyzeRelease
+> Task :flutter_secure_storage:writeReleaseLintModelMetadata
+> Task :flutter_secure_storage:lintVitalAnalyzeRelease
+> Task :jni:writeReleaseLintModelMetadata
+> Task :jni_flutter:lintVitalAnalyzeRelease
+> Task :jni_flutter:writeReleaseLintModelMetadata
+> Task :jni:lintVitalAnalyzeRelease
+> Task :video_player_android:writeReleaseLintModelMetadata
+> Task :video_player_android:lintVitalAnalyzeRelease
+> Task :webview_flutter_android:writeReleaseLintModelMetadata
+> Task :firebase_core:generateReleaseLintVitalModel
+> Task :firebase_messaging:generateReleaseLintVitalModel
+> Task :flutter_secure_storage:generateReleaseLintVitalModel
+> Task :jni:generateReleaseLintVitalModel
+> Task :jni_flutter:generateReleaseLintVitalModel
+> Task :video_player_android:generateReleaseLintVitalModel
+> Task :webview_flutter_android:generateReleaseLintVitalModel
+> Task :app:convertShrunkResourcesToBinaryRelease
+> Task :app:optimizeReleaseResources
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+> Task :firebase_core:bundleReleaseAar
+> Task :firebase_core:mergeReleaseResources
+> Task :webview_flutter_android:lintVitalAnalyzeRelease
+> Task :app:lintVitalAnalyzeRelease
+> Task :firebase_core:verifyReleaseResources
+> Task :firebase_core:assembleRelease
+> Task :firebase_messaging:bundleReleaseAar
+> Task :app:lintVitalReportRelease
+> Task :firebase_messaging:mergeReleaseResources
+> Task :app:lintVitalRelease
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+> Task :flutter_secure_storage:bundleReleaseAar
+> Task :firebase_messaging:verifyReleaseResources
+> Task :flutter_secure_storage:mergeReleaseResources
+> Task :firebase_messaging:assembleRelease
+> Task :jni:bundleReleaseAar
+> Task :jni:mergeReleaseResources
+> Task :flutter_secure_storage:verifyReleaseResources
+> Task :flutter_secure_storage:assembleRelease
+> Task :jni_flutter:bundleReleaseAar
+> Task :jni:verifyReleaseResources
+> Task :jni_flutter:mergeReleaseResources
+> Task :jni:assembleRelease
+> Task :video_player_android:bundleReleaseAar
+> Task :jni_flutter:verifyReleaseResources
+> Task :video_player_android:mergeReleaseResources
+> Task :jni_flutter:assembleRelease
+> Task :webview_flutter_android:bundleReleaseAar
+> Task :webview_flutter_android:mergeReleaseResources
+> Task :video_player_android:verifyReleaseResources
+> Task :video_player_android:assembleRelease
+> Task :webview_flutter_android:verifyReleaseResources
+> Task :webview_flutter_android:assembleRelease
+w: Detected multiple Kotlin daemon sessions at 
+
+[Incubating] Problems report is available at: file:///D:/AndroidDev/app-v1.2.1/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 5m 15s
+392 actionable tasks: 278 executed, 114 up-to-date

@@ -1,0 +1,17 @@
+{
+  "version": "1.2.1",
+  "device": "emulator-5554",
+  "checks": [
+    "home_illustration_and_four_tabs",
+    "upgrade_preserved_three_fixture_members",
+    "成员监护",
+    "家中风险",
+    "物品寻找",
+    "camera_entry",
+    "upload_entry",
+    "messages",
+    "manual_loaded"
+  ],
+  "backend_and_camera_real_hardware_tested": false,
+  "screenshot_members": "three historical QA fixture profiles; not actual monitored persons"
+}

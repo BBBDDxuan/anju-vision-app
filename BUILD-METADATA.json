@@ -1,0 +1,45 @@
+{
+  "version": "1.2.1+6",
+  "application_id": "com.eldersafety.elder_safety_mobile",
+  "artifacts": [
+    {
+      "file": "AnjuVision-v1.2.1-arm64.apk",
+      "bytes": 68970503,
+      "sha256": "a622618258ad6521ec4631cc6cb2f8437a0cdda01782b466d16fa2f66114424d"
+    },
+    {
+      "file": "AnjuVision-v1.2.1-armv7.apk",
+      "bytes": 59732089,
+      "sha256": "9d2053f99f4e582e2baf7d6872a39411def1b3a432ec54e609805bf2425a4985"
+    },
+    {
+      "file": "AnjuVision-v1.2.1-x86_64.apk",
+      "bytes": 79009906,
+      "sha256": "6a34b6aae64cf5f8b3294aa6d8a62659b734652789792ffe7968b570d0889f07"
+    },
+    {
+      "file": "AnjuVision-v1.2.1-source.zip",
+      "bytes": 255408,
+      "sha256": "808db9bad2850be6f0381a502ad05f77e43008e9add9623ff509385f2ecf4216"
+    },
+    {
+      "file": "安居视界_v1.2.1_完整使用手册.html",
+      "bytes": 24614,
+      "sha256": "2a8c9ed7cb35c42b1860e8dac851ffb21bc219f6013b1dd53c1a3801610a068b"
+    },
+    {
+      "file": "安居视界_v1.2.1_完整使用手册.md",
+      "bytes": 20463,
+      "sha256": "1276af7b77c25653bf9bccb5f79029e700c79b52290cc67af6570a14d6a12529"
+    }
+  ],
+  "checks": {
+    "unit_tests_passed": 57,
+    "tests_skipped": 2,
+    "v120_core_files_unchanged": 42,
+    "navigation_and_manual_verified_on_emulator": true,
+    "camera_and_ai_accuracy_retested": false,
+    "standalone_manual_rendered": true,
+    "web_ui_modified": false
+  }
+}

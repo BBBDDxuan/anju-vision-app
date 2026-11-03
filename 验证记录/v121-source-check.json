@@ -1,0 +1,9 @@
+{
+  "version": "1.2.1+6",
+  "unchanged_v120_core_files": 42,
+  "core_changes": [],
+  "tests_passed": 57,
+  "skipped": 2,
+  "web_ui_modified": false,
+  "manual_chapters": 15
+}
