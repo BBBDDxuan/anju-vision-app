@@ -1,0 +1,23 @@
+.dart_tool/
+.packages
+build/
+.platform_scaffold/
+.flutter-plugins-dependencies
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+# Generated Firebase project identifiers are configured per developer.
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# C build logs, local SDKs and credentials never enter Git.
+/tool/logs/
+/tool/reports/
+/tools/
+*.log

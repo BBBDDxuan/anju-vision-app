@@ -1,0 +1,91 @@
+Unblock-File: 文件名、目录名或卷标语法不正确。 : 'G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\bin\internal\update_engine_version.ps1:Zone.Identifier'.
+impellerc failure: Compilation failed for target: RuntimeStageVulkan
+"G:\\����\\AI�ڿ���\\�ֻ���\\Cģ��\\tools\\flutter-light\\packages\\flutter\\lib\\src\\material\\shaders\\ink_sparkle.frag": GLSL to SPIRV failed; Compilation error. 3 error(s) and 15 warning(s).
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag: warning: (version, profile) forced to be (460, core), while in source code it is (320, es)
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:9: error: '#include' : Included file not found. for header name: flutter/runtime_effect.glsl
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:13: warning: 'u_color' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:15: warning: 'u_composite_1' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:16: warning: 'u_center' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:17: warning: 'u_max_radius' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:18: warning: 'u_resolution_scale' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:19: warning: 'u_noise_scale' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:20: warning: 'u_noise_phase' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:21: warning: 'u_circle1' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:22: warning: 'u_circle2' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:23: warning: 'u_circle3' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:24: warning: 'u_rotation1' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:25: warning: 'u_rotation2' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:26: warning: 'u_rotation3' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:41: warning: '' : all default precisions are highp; use precision statements to quiet warning, e.g.:
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:          "precision mediump int; precision highp float;" 
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:95: error: 'FlutterFragCoord' : no matching overloaded function found
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:95: error: '=' :  cannot convert from ' const float' to ' temp highp 2-component vector of float'
+
+
+impellerc failure: Compilation failed for target: RuntimeStageVulkan
+"G:\\����\\AI�ڿ���\\�ֻ���\\Cģ��\\tools\\flutter-light\\packages\\flutter\\lib\\src\\widgets\\shaders\\stretch_effect.frag": GLSL to SPIRV failed; Compilation error. 3 error(s) and 1 warning(s).
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\widgets\shaders\stretch_effect.frag: warning: (version, profile) forced to be (460, core), while in source code it is (320, es)
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\widgets\shaders\stretch_effect.frag:9: error: '#include' : Included file not found. for header name: flutter/runtime_effect.glsl
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\widgets\shaders\stretch_effect.frag:112: error: 'FlutterFragCoord' : no matching overloaded function found
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\widgets\shaders\stretch_effect.frag:112: error: 'xy' : vector swizzle selection out of range
+
+
+
+ShaderCompilerException: Shader compilation of "G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag" to "build\unit_test_assets\shaders/ink_sparkle.frag" failed with exit code 1.
+Stderr:
+Compilation failed for target: RuntimeStageVulkan
+"G:\\����\\AI�ڿ���\\�ֻ���\\Cģ��\\tools\\flutter-light\\packages\\flutter\\lib\\src\\material\\shaders\\ink_sparkle.frag": GLSL to SPIRV failed; Compilation error. 3 error(s) and 15 warning(s).
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag: warning: (version, profile) forced to be (460, core), while in source code it is (320, es)
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:9: error: '#include' : Included file not found. for header name: flutter/runtime_effect.glsl
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:13: warning: 'u_color' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:15: warning: 'u_composite_1' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:16: warning: 'u_center' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:17: warning: 'u_max_radius' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:18: warning: 'u_resolution_scale' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:19: warning: 'u_noise_scale' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:20: warning: 'u_noise_phase' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:21: warning: 'u_circle1' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:22: warning: 'u_circle2' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:23: warning: 'u_circle3' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:24: warning: 'u_rotation1' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:25: warning: 'u_rotation2' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:26: warning: 'u_rotation3' : ignoring layout qualifier for uniform location
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:41: warning: '' : all default precisions are highp; use precision statements to quiet warning, e.g.:
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:          "precision mediump int; precision highp float;" 
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:95: error: 'FlutterFragCoord' : no matching overloaded function found
+G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\packages\flutter\lib\src\material\shaders\ink_sparkle.frag:95: error: '=' :  cannot convert from ' const float' to ' temp highp 2-component vector of float'
+
+#0      ShaderCompiler.compileShader (package:flutter_tools/src/build_system/tools/shader_compiler.dart:311:11)
+<asynchronous suspension>
+#1      writeBundle.<anonymous closure> (package:flutter_tools/src/bundle_builder.dart:229:25)
+<asynchronous suspension>
+#2      Future.wait.<anonymous closure> (dart:async/future.dart:567:21)
+<asynchronous suspension>
+#3      writeBundle (package:flutter_tools/src/bundle_builder.dart:173:3)
+<asynchronous suspension>
+#4      TestCommand._buildTestAsset (package:flutter_tools/src/commands/test.dart:811:7)
+<asynchronous suspension>
+#5      TestCommand.runCommand (package:flutter_tools/src/commands/test.dart:507:7)
+<asynchronous suspension>
+#6      FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1663:27)
+<asynchronous suspension>
+#7      AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#8      CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#9      FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:496:9)
+<asynchronous suspension>
+#10     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#11     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:431:5)
+<asynchronous suspension>
+#12     FlutterCommandRunner.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:307:33)
+<asynchronous suspension>
+#13     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:104:11)
+<asynchronous suspension>
+#14     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#15     main (package:flutter_tools/executable.dart:103:3)
+<asynchronous suspension>
+
+Feature flags enabled: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, enable-record-use, enable-swift-package-manager, omit-legacy-version-file, enable-lldb-debugging, enable-uiscene-migration, enable-riscv64

@@ -1,0 +1,459 @@
+import 'dart:async';
+import 'dart:convert';
+import 'models/unified_alert.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'app_controller.dart';
+import 'services/android_notices.dart';
+import 'ui/event_detail_screen.dart';
+
+import 'ui/home_screen.dart';
+import 'ui/history_screen.dart';
+import 'ui/members_screen.dart';
+import 'ui/risks_screen.dart';
+import 'ui/objects_screen.dart';
+import 'ui/settings_screen.dart';
+import 'ui/devices_screen.dart';
+import 'ui/widgets.dart';
+import 'package:flutter/services.dart';
+
+class ElderSafetyApp extends StatefulWidget {
+  const ElderSafetyApp({super.key, required this.controller});
+  final SafetyController controller;
+  @override
+  State<ElderSafetyApp> createState() => _ElderSafetyAppState();
+}
+
+class _ElderSafetyAppState extends State<ElderSafetyApp>
+    with WidgetsBindingObserver {
+  final _navigator = GlobalKey<NavigatorState>();
+  final _messenger = GlobalKey<ScaffoldMessengerState>();
+  StreamSubscription<EventNotice>? _notices;
+  StreamSubscription<String>? _opens;
+  StreamSubscription<AlertLocation>? _alertOpens;
+  int _tab = 0;
+  String? _openId;
+  final List<String> _pendingOpens = [];
+  bool _ready = false;
+  bool _active = true;
+  final _android = AndroidNotices();
+  late final Future<void> _nativeReady;
+  final Set<String> _systemNotices = {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _active = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+    _nativeReady = _initializeNativeNotices();
+    _notices = widget.controller.notices.stream.listen((notice) {
+      if (!mounted ||
+          !_active ||
+          !widget.controller.preferences.notificationsEnabled)
+        return;
+      unawaited(_showSystemNotice(notice.eventId));
+      _messenger.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(notice.message),
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: '查看',
+            onPressed: () => _openEvent(notice.eventId),
+          ),
+        ),
+      );
+    });
+    _opens = widget.controller.openEvents.stream.listen(_openEvent);
+    _alertOpens = widget.controller.alertOpens.stream.listen(
+      (_) => _consumeAlertOpens(),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await widget.controller.initialize();
+      if (!mounted) return;
+      _ready = true;
+      _consumeAlertOpens();
+      if (_pendingOpens.isNotEmpty) {
+        final id = _pendingOpens.last;
+        _pendingOpens.clear();
+        _openEvent(id);
+      }
+    });
+  }
+
+  Future<void> _initializeNativeNotices() async {
+    try {
+      await _android.initialize(_openNativeNotice);
+    } catch (_) {
+      // Native integration failure must not suppress the in-app warning.
+      debugPrint('Android notification initialization failed');
+    }
+  }
+
+  Future<void> _showSystemNotice(String id) async {
+    await _nativeReady;
+    if (!mounted ||
+        !_active ||
+        !widget.controller.preferences.notificationsEnabled)
+      return;
+    final c = widget.controller;
+    final key = '${c.settings.baseUrl}|${c.household.objects.baseUrl}|$id';
+    if (!_systemNotices.add(key)) return;
+    try {
+      await _android.show(id);
+    } catch (_) {
+      _systemNotices.remove(key);
+      // Permissions and channel switches are explained in Notification settings.
+      debugPrint('Android system notification unavailable');
+    }
+  }
+
+  void _openFeature(String title, Widget Function() screen) {
+    _navigator.currentState?.push<void>(
+      MaterialPageRoute(
+        settings: RouteSettings(name: '/features/$title'),
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: SafeArea(
+            top: false,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: ListenableBuilder(
+                  listenable: widget.controller,
+                  builder: (_, _) => screen(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openMembers() => _openFeature(
+    '成员监护',
+    () => MembersScreen(
+      controller: widget.controller,
+      openEvent: _openEvent,
+      openDevices: _openDevices,
+    ),
+  );
+
+  void _openRisks() => _openFeature(
+    '家中风险',
+    () => RisksScreen(
+      controller: widget.controller,
+      openEvent: _openEvent,
+      openDevices: _openDevices,
+    ),
+  );
+
+  void _openObjects() =>
+      _openFeature('物品寻找', () => ObjectsScreen(controller: widget.controller));
+
+  void _openDevices() {
+    _navigator.currentState?.popUntil((route) => route.isFirst);
+    _selectTab(1);
+  }
+
+  void _selectTab(int value) {
+    _messenger.currentState?.clearSnackBars();
+    setState(() => _tab = value);
+  }
+
+  void _openNativeNotice(String payload) {
+    try {
+      final value = jsonDecode(payload);
+      if (value is Map) {
+        final location = AlertLocation.tryParse(
+          Map<String, dynamic>.from(value),
+        );
+        if (location != null) {
+          widget.controller.openAlert(location);
+          return;
+        }
+      }
+    } catch (_) {
+      /* Legacy payloads only belong to the legacy connection. */
+    }
+    if (!widget.controller.usesUnifiedBackend) _openEvent(payload);
+  }
+
+  void _consumeAlertOpens() {
+    if (!mounted || !_ready || _navigator.currentState == null) return;
+    final pending = widget.controller.takePendingAlertOpens();
+    if (pending.isEmpty) return;
+    final location = pending.last;
+    if (!widget.controller.locationMatches(location)) {
+      _messenger.currentState?.showSnackBar(
+        const SnackBar(content: Text('这条通知属于其他后端或家庭，请切换到原连接后查看')),
+      );
+      return;
+    }
+    _openUnifiedAlert(location);
+  }
+
+  void _openUnifiedAlert(AlertLocation location) {
+    if (!mounted || _openId == location.key) return;
+    if (_openId != null)
+      _navigator.currentState!.popUntil((route) => route.isFirst);
+    _openId = location.key;
+    unawaited(
+      _navigator.currentState!
+          .push<void>(
+            MaterialPageRoute(
+              settings: RouteSettings(
+                name: '/alerts/${Uri.encodeComponent(location.alertId)}',
+                arguments: location.toJson(),
+              ),
+              builder: (_) => EventDetailScreen(
+                controller: widget.controller,
+                eventId: location.alertId,
+                location: location,
+              ),
+            ),
+          )
+          .whenComplete(() {
+            if (_openId == location.key) _openId = null;
+          }),
+    );
+  }
+
+  void _openEvent(String id) {
+    if (widget.controller.usesUnifiedBackend) {
+      final event = widget.controller.events
+          .where((e) => e.id == id && e.isUnified)
+          .firstOrNull;
+      if (event != null)
+        widget.controller.openAlert(
+          AlertLocation(
+            backend: widget.controller.serviceScope,
+            household: 'default',
+            alertId: id,
+            source: event.details['source'] as String,
+          ),
+        );
+      return;
+    }
+    if (!mounted || _openId == id) return;
+    if (!_ready || _navigator.currentState == null) {
+      _pendingOpens.add(id);
+      return;
+    }
+    // Replace a previously opened event rather than stacking several alerts.
+    if (_openId != null)
+      _navigator.currentState!.popUntil((route) => route.isFirst);
+    _openId = id;
+    unawaited(
+      _navigator.currentState!
+          .push<void>(
+            MaterialPageRoute(
+              settings: RouteSettings(
+                name: '/events/${Uri.encodeComponent(id)}',
+              ),
+              builder: (_) =>
+                  EventDetailScreen(controller: widget.controller, eventId: id),
+            ),
+          )
+          .whenComplete(() {
+            if (_openId == id) _openId = null;
+          }),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _active = state == AppLifecycleState.resumed;
+    widget.controller.setActive(_active);
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: '安居视界',
+    debugShowCheckedModeBanner: false,
+    navigatorKey: _navigator,
+    scaffoldMessengerKey: _messenger,
+    theme: Anju.theme(),
+    locale: const Locale('zh', 'CN'),
+    supportedLocales: const [Locale('zh', 'CN')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    home: ListenableBuilder(
+      listenable: widget.controller,
+      builder: (context, _) {
+        final controller = widget.controller;
+        final pending = controller.events.where(eventNeedsAction).length;
+        final screens = [
+          HomeScreen(
+            controller: controller,
+            openEvent: _openEvent,
+            openHistory: () => _selectTab(2),
+            openDevices: _openDevices,
+            openSettings: () => _selectTab(3),
+            openMembers: _openMembers,
+            openRisks: _openRisks,
+            openObjects: _openObjects,
+          ),
+          DevicesScreen(controller: controller, openEvent: _openEvent),
+          HistoryScreen(controller: controller, openEvent: _openEvent),
+          SettingsScreen(controller: controller, openMembers: _openMembers),
+        ];
+        return PopScope(
+          canPop: _tab == 0,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && _tab != 0) setState(() => _tab = 0);
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              toolbarHeight: 64,
+              titleSpacing: 20,
+              title: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BrandMark(size: 32),
+                  SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      '安居视界',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 20),
+                  child: Center(
+                    child: Pill(
+                      _tab == 3 ? 'v1.2.1' : '家庭守护',
+                      icon: Icons.shield_outlined,
+                    ),
+                  ),
+                ),
+              ],
+              systemOverlayStyle: SystemUiOverlayStyle.dark,
+            ),
+            body: !controller.initialized
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                    children: [
+                      if (controller.loading)
+                        const LinearProgressIndicator(minHeight: 2),
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) => Row(
+                            children: [
+                              if (constraints.maxWidth >= 720)
+                                NavigationRail(
+                                  selectedIndex: _tab,
+                                  onDestinationSelected: (value) =>
+                                      setState(() => _tab = value),
+                                  labelType: NavigationRailLabelType.all,
+                                  destinations: const [
+                                    NavigationRailDestination(
+                                      icon: Icon(Icons.home_outlined),
+                                      selectedIcon: Icon(Icons.home_rounded),
+                                      label: Text('首页'),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: Icon(Icons.videocam_outlined),
+                                      label: Text('设备'),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: Icon(
+                                        Icons.notifications_none_rounded,
+                                      ),
+                                      label: Text('消息'),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: Icon(Icons.person_outline_rounded),
+                                      label: Text('我的'),
+                                    ),
+                                  ],
+                                ),
+                              Expanded(
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 640,
+                                    ),
+                                    child: IndexedStack(
+                                      index: _tab,
+                                      children: screens,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+            bottomNavigationBar: MediaQuery.sizeOf(context).width >= 720
+                ? null
+                : DecoratedBox(
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: Anju.line)),
+                    ),
+                    child: NavigationBar(
+                      height: 72,
+                      elevation: 0,
+                      backgroundColor: Colors.white,
+                      indicatorColor: Anju.light,
+                      selectedIndex: _tab,
+                      onDestinationSelected: (value) {
+                        HapticFeedback.selectionClick();
+                        _selectTab(value);
+                      },
+                      destinations: [
+                        const NavigationDestination(
+                          icon: Icon(Icons.home_outlined),
+                          selectedIcon: Icon(Icons.home_rounded),
+                          label: '首页',
+                        ),
+                        const NavigationDestination(
+                          icon: Icon(Icons.videocam_outlined),
+                          selectedIcon: Icon(Icons.videocam_rounded),
+                          label: '设备',
+                        ),
+                        NavigationDestination(
+                          icon: Badge(
+                            isLabelVisible: pending > 0,
+                            label: Text('$pending'),
+                            child: const Icon(Icons.notifications_none_rounded),
+                          ),
+                          selectedIcon: const Icon(Icons.notifications_rounded),
+                          label: '消息',
+                        ),
+                        const NavigationDestination(
+                          icon: Icon(Icons.person_outline_rounded),
+                          selectedIcon: Icon(Icons.person_rounded),
+                          label: '我的',
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        );
+      },
+    ),
+  );
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_notices?.cancel());
+    unawaited(_opens?.cancel());
+    unawaited(_alertOpens?.cancel());
+    unawaited(_android.dispose());
+    widget.controller.dispose();
+    super.dispose();
+  }
+}

@@ -1,0 +1,75 @@
+Unblock-File: 文件名、目录名或卷标语法不正确。 : 'X:\flutter-light\bin\internal\update_engine_version.ps1:Zone.Identifier'.
+00:00 +0: loading Y:/mobile-app/test/android_notices_test.dart
+00:00 +0: Y:/mobile-app/test/android_notices_test.dart: notification bridge reads permission results and opens native settings
+00:00 +1: Y:/mobile-app/test/android_notices_test.dart: missing platform status never masquerades as permission granted
+00:00 +2: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +3: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +4: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +5: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:03 +6: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:03 +7: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:03 +8: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:03 +9: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:03 +10: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:07 +11: Y:/mobile-app/test/android_notices_test.dart: 320px connection advanced polling field stays usable at text scale 1.0
+00:09 +12: Y:/mobile-app/test/android_notices_test.dart: 320px connection advanced polling field stays usable at text scale 1.5
+00:30 +13: Y:/mobile-app/test/household_test.dart: profiles, ambiguous bindings, manual association and persistence
+00:30 +14: Y:/mobile-app/test/household_test.dart: track collisions and storage errors do not change profiles
+00:30 +15: Y:/mobile-app/test/household_test.dart: local observations resolve locally and never appear as risks
+00:33 +16: Y:/mobile-app/test/media_features_test.dart: camera validates LAN endpoint and encodes credentials without changing dual path
+00:33 +17: Y:/mobile-app/test/media_features_test.dart: chunked upload preserves bytes, auth and exact progress without buffering full file
+00:36 +18: Y:/mobile-app/test/media_features_test.dart: cancel and incorrect server offsets clean upload session; never complete
+00:38 +19: Y:/mobile-app/test/media_features_test.dart: analysis modes explicit; resume preserves original job mode
+00:38 +20: Y:/mobile-app/test/media_features_test.dart: workspace proxy authenticates session, streams auth/range, blocks redirects and retains camera denial
+00:40 +21: Y:/mobile-app/test/controller_test.dart: blank security token never creates a live repository or fake data
+00:43 +22: Y:/mobile-app/test/controller_test.dart: video-only family preferences persist locally across restart
+00:43 +23: Y:/mobile-app/test/controller_test.dart: explicit fixture startup, one notice per new event, notification switch
+00:43 +24: Y:/mobile-app/test/controller_test.dart: foreground push and polling share one event notice
+00:43 +25: Y:/mobile-app/test/controller_test.dart: missing platform storage exposes warning and empty state, not sample data
+00:43 +26: Y:/mobile-app/test/controller_test.dart: late response from the old connection cannot replace new data
+00:43 +27: Y:/mobile-app/test/controller_test.dart: failed storage save preserves old repository and closes candidate
+00:52 +28: Y:/mobile-app/test/models_test.dart: legacy demo flags are ignored while real connection settings survive
+00:52 +29: Y:/mobile-app/test/models_test.dart: empty household and family preferences round-trip without synthetic members
+00:52 +30: Y:/mobile-app/test/models_test.dart: household migration retains profiles and real objects but drops sample records
+00:52 +31: Y:/mobile-app/test/models_test.dart: default API uses 8010 and structured backend Review is readable
+00:52 +32: Y:/mobile-app/test/models_test.dart: unified event fields are retained; optional values remain unknown
+00:52 +33: Y:/mobile-app/test/models_test.dart: history filters intersect and use exclusive next-day boundary
+00:52 +34: Y:/mobile-app/test/models_test.dart: URL validation rejects paths, userinfo, query and Bearer prefix
+00:52 +35: Y:/mobile-app/test/models_test.dart: push deep links accept the event contract and reject foreign URLs
+01:12 +36: Y:/mobile-app/test/navigation_manual_test.dart: (setUpAll)
+01:12 +36: Y:/mobile-app/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+01:19 +37: Y:/mobile-app/test/navigation_manual_test.dart: offline manual loads full content and searches chapters
+01:19 +38: Y:/mobile-app/test/navigation_manual_test.dart: (tearDownAll)
+01:30 +38: Y:/mobile-app/test/object_api_test.dart: original recording routes, evidence and explicit no-cloud query
+01:30 +39: Y:/mobile-app/test/object_api_test.dart: cloud opt-in reaches original request flag
+01:30 +40: Y:/mobile-app/test/object_api_test.dart: last observed objects and evidence frames preserve original identifiers
+01:44 +41: Y:/mobile-app/test/original_service_test.dart: live original backend query, memory, replay, frame and video address
+  Skip: Run only against tool/original_api_fixture.py
+02:08 +41 ~1: Y:/mobile-app/test/product_test.dart: search history survives restart without inventing recent objects
+02:08 +42 ~1: Y:/mobile-app/test/product_test.dart: three areas separate events and support object search
+02:10 +43 ~1: Y:/mobile-app/test/product_test.dart: member profile can be edited from its card
+02:10 +44 ~1: Y:/mobile-app/test/product_test.dart: small display with large text and tablet remain usable
+02:11 +45 ~1: Y:/mobile-app/test/product_test.dart: camera workspace is usable on a small display and has no photo analysis
+02:25 +46 ~1: Y:/mobile-app/test/video_alerts_integration_test.dart: original backend safety API, evidence frame and acknowledgement roundtrip
+  Skip: Requires isolated original backend fixture
+02:25 +46 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: video mapping excludes smoke/sparks/mock and links each alert to its own evidence
+02:25 +47 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: evidence cannot send service tokens to another origin
+02:25 +48 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: live failure does not hide video alerts or their acknowledgement/evidence
+02:25 +49 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: new video events notify once; initial history/reconnect do not flood notices
+02:25 +50 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: standalone video persists notification preferences without safety backend
+02:25 +51 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: acknowledgement needs authoritative readback, not only successful POST
+02:25 +52 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: ack readback survives a later failed video refresh without reverting cache
+02:25 +53 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: video events publish before a slow live source completes
+02:25 +54 ~2: Y:/mobile-app/test/video_alerts_integration_test.dart: one failed video retains cached alerts without hiding successful videos
+02:41 +55 ~2: Y:/mobile-app/test/widget_test.dart: unconfigured app starts with empty data without Firebase
+02:43 +56 ~2: Y:/mobile-app/test/widget_test.dart: detail ack and confirmed resolve read back authoritative states
+02:54 +57 ~2: Y:/mobile-app/test/notifications/alert_gate_test.dart: persistent scoped notice gate covers history, repeats, restart, concurrency and failure
+03:11 +58 ~2: Y:/mobile-app/test/notifications/push_registration_test.dart: rotation preserves old token on failure and deletes only own registration
+03:11 +59 ~2: Y:/mobile-app/test/notifications/push_registration_test.dart: interrupted stale-token cleanup retries on same-token configure
+03:11 +60 ~2: Y:/mobile-app/test/notifications/push_registration_test.dart: unified FCM payload resolves stable alert ID rather than source event
+03:11 +61 ~2: Y:/mobile-app/test/notifications/push_registration_test.dart: permission denial removes only own registration and never reports success
+03:11 +62 ~2: Y:/mobile-app/test/notifications/push_registration_test.dart: unchanged token is restored after server registration table reset
+03:24 +63 ~2: Y:/mobile-app/test/notifications/android_bridge_test.dart: cold-start notification returns original backend scope and stable ID
+03:24 +64 ~2: Y:/mobile-app/test/notifications/android_bridge_test.dart: failed bridge initialization can retry without losing single-owner protection
+03:24 +65 ~2: Y:/mobile-app/test/notifications/android_bridge_test.dart: permission denial preserves in-app notice without repeated system attempts
+03:24 +66 ~2: All tests passed!

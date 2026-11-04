@@ -1,0 +1,4 @@
+storeFile=C:/your-private-directory/anju-release.jks
+storePassword=REPLACE_LOCALLY
+keyPassword=REPLACE_LOCALLY
+keyAlias=anju-release

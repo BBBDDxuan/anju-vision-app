@@ -1,0 +1,21 @@
+{
+  "verified_metadata_date": "2026-10-30",
+  "flutter": {
+    "version": "3.47.8",
+    "archive": "flutter_windows_3.47.8-stable.zip",
+    "url": "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.47.8-stable.zip",
+    "sha256": "11e19ea3409808fe3b3765ea8149640c299e58cce6eda7c9f38fc1b4a193eb6e"
+  },
+  "jdk": {
+    "archive": "OpenJDK17U-jdk_x64_windows_hotspot_17.0.20.1_1.zip",
+    "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_windows_hotspot_17.0.20.1_1.zip",
+    "sha256": "e53a79c3c3d86865bd7e787903884331068e71321714ffd44f145785affc7cb0"
+  },
+  "android_commandline": {
+    "version": "19.0",
+    "directory": "19.0",
+    "archive": "commandlinetools-win-13114758_latest.zip",
+    "url": "https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip",
+    "sha1": "54a582f3bf73e04253602f2d1c80bd5868aac115"
+  }
+}

@@ -1,0 +1,23 @@
+// Static configuration checks only. This is NOT a Flutter/Kotlin compiler.
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import assert from 'node:assert/strict';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const manifest=read('android/app/src/main/AndroidManifest.xml');
+for(const permission of ['INTERNET','POST_NOTIFICATIONS','VIBRATE'])assert(manifest.includes('android.permission.'+permission));
+assert(manifest.includes('firebase_messaging_auto_init_enabled" android:value="false'));
+assert(manifest.includes('elder_safety_alerts_v1'));
+assert(read('android/settings.gradle.kts').includes('com.google.gms.google-services'));
+assert(read('android/app/build.gradle.kts').includes('enableFirebase'));
+const native=read('android/app/src/main/kotlin/com/eldersafety/elder_safety_mobile/MainActivity.kt');
+assert(native.includes('RtspViewFactory'));
+for(const method of ['initialAlert', 'openAlert', 'safety_scope', 'validScope']) assert(native.includes(method));
+assert(read('lib/services/notifications/push_payload.dart').includes("data['anju_type']"));
+assert(native.includes('PendingIntent.FLAG_IMMUTABLE'));
+assert(native.includes('VISIBILITY_PRIVATE'));
+assert(native.includes('.notify(eventId, 0, notice)'));
+for(const file of ['lib/services/notifications/alert_gate.dart','lib/services/notifications/secure_notice_store.dart'])assert(!/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(read(file)));
+assert(!fs.existsSync(path.join(root,'android/app/google-services.json'))||read('.gitignore').includes('google-services.json'));
+console.log('C notification source/config consistency passed; runtime/build/phone checks are separate.');

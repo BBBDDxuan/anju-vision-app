@@ -1,0 +1,7 @@
+Unblock-File: 文件名、目录名或卷标语法不正确。 : 'X:\flutter-light\bin\internal\update_engine_version.ps1:Zone.Identifier'.
+Analyzing Y:\...                                                
+
+   info - 'onTokenRefresh' is deprecated and shouldn't be used. Use onRegistered instead. Try replacing the use of the deprecated member with the replacement - Y:\lib\services\push_service.dart:116:19 - deprecated_member_use
+   info - 'getToken' is deprecated and shouldn't be used. Use register() and onRegistered instead. Try replacing the use of the deprecated member with the replacement - Y:\lib\services\push_service.dart:198:35 - deprecated_member_use
+
+2 issues found. (ran in 9.2s)

@@ -1,0 +1,1 @@
+PASS: 37 notification-core scenarios (synthetic, not phone delivery)

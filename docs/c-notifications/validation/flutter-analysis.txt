@@ -1,0 +1,65 @@
+Unblock-File: 文件名、目录名或卷标语法不正确。 : 'G:\比赛\AI黑客松\手机端\C模块\tools\flutter-light\bin\internal\update_engine_version.ps1:Zone.Identifier'.
+Resolving dependencies...
+Downloading packages...
+  cross_file 0.3.5+5 (0.4.0 available)
+  jni 1.1.1 (1.1.2 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  objective_c 9.6.2 (9.6.3 available)
+  test_api 0.7.12 (0.7.15 available)
+Got dependencies!
+5 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Unhandled exception:
+FormatException: Unexpected end of input (at character 522)
+...%E5%AE%89%E8%A3%85%E5%8C%85_v1.2.1/mobile-app/"}],"capabilities":{"window":
+                                                                              ^
+
+#0      _ChunkedJsonParser.fail (dart:convert-patch/convert_patch.dart:1466)
+#1      _ChunkedJsonParser.close (dart:convert-patch/convert_patch.dart:496)
+#2      _parseJson (dart:convert-patch/convert_patch.dart:36)
+#3      JsonDecoder.convert (dart:convert/json.dart:640)
+#4      JsonCodec.decode (dart:convert/json.dart:219)
+#5      jsonDecode (dart:convert/json.dart:160)
+#6      LspByteStreamServerChannel._readMessage (package:analysis_server/src/lsp/channel/lsp_byte_stream_channel.dart:96)
+#7      LspByteStreamServerChannel.listen.<anonymous closure> (package:analysis_server/src/lsp/channel/lsp_byte_stream_channel.dart:67)
+#8      _rootRunUnary (dart:async/zone_root.dart:48)
+#9      _CustomZone.runUnary (dart:async/zone.dart:816)
+#10     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710)
+#11     _BufferingStreamSubscription._sendData (dart:async/stream_impl.dart:381)
+#12     _DelayedData.perform (dart:async/stream_impl.dart:573)
+#13     _PendingEvents.handleNext (dart:async/stream_impl.dart:678)
+#14     _PendingEvents.schedule.<anonymous closure> (dart:async/stream_impl.dart:649)
+#15     _rootRun (dart:async/zone_root.dart:27)
+#16     _CustomZone.run (dart:async/zone.dart:810)
+#17     _CustomZone.runGuarded (dart:async/zone.dart:702)
+#18     _CustomZone.bindCallbackGuarded.<anonymous closure> (dart:async/zone.dart:743)
+#19     _rootRun (dart:async/zone_root.dart:35)
+#20     _CustomZone.run (dart:async/zone.dart:810)
+#21     _CustomZone.runGuarded (dart:async/zone.dart:702)
+#22     _CustomZone.bindCallbackGuarded.<anonymous closure> (dart:async/zone.dart:743)
+#23     _microtaskLoop (dart:async/schedule_microtask.dart:40)
+#24     _startMicrotaskLoop (dart:async/schedule_microtask.dart:49)
+#25     _runPendingImmediateCallback (dart:isolate-patch/isolate_patch.dart:127)
+#26     _RawReceivePort._handleMessage (dart:isolate-patch/isolate_patch.dart:193)
+Analyzing mobile-app...                                         
+analysis server exited with code 255 and output:
+[stderr] #7      LspByteStreamServerChannel.listen.<anonymous closure> (package:analysis_server/src/lsp/channel/lsp_byte_stream_channel.dart:67)
+[stderr] #8      _rootRunUnary (dart:async/zone_root.dart:48)
+[stderr] #9      _CustomZone.runUnary (dart:async/zone.dart:816)
+[stderr] #10     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710)
+[stderr] #11     _BufferingStreamSubscription._sendData (dart:async/stream_impl.dart:381)
+[stderr] #12     _DelayedData.perform (dart:async/stream_impl.dart:573)
+[stderr] #13     _PendingEvents.handleNext (dart:async/stream_impl.dart:678)
+[stderr] #14     _PendingEvents.schedule.<anonymous closure> (dart:async/stream_impl.dart:649)
+[stderr] #15     _rootRun (dart:async/zone_root.dart:27)
+[stderr] #16     _CustomZone.run (dart:async/zone.dart:810)
+[stderr] #17     _CustomZone.runGuarded (dart:async/zone.dart:702)
+[stderr] #18     _CustomZone.bindCallbackGuarded.<anonymous closure> (dart:async/zone.dart:743)
+[stderr] #19     _rootRun (dart:async/zone_root.dart:35)
+[stderr] #20     _CustomZone.run (dart:async/zone.dart:810)
+[stderr] #21     _CustomZone.runGuarded (dart:async/zone.dart:702)
+[stderr] #22     _CustomZone.bindCallbackGuarded.<anonymous closure> (dart:async/zone.dart:743)
+[stderr] #23     _microtaskLoop (dart:async/schedule_microtask.dart:40)
+[stderr] #24     _startMicrotaskLoop (dart:async/schedule_microtask.dart:49)
+[stderr] #25     _runPendingImmediateCallback (dart:isolate-patch/isolate_patch.dart:127)
+[stderr] #26     _RawReceivePort._handleMessage (dart:isolate-patch/isolate_patch.dart:193)

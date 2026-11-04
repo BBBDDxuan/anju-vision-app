@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-11-04T16:01:59.0033034+08:00",
+  "flutter_found": true,
+  "flutter_path": "G:\\比赛\\AI黑客松\\手机端\\C模块\\tools\\flutter-light\\bin\\flutter.bat",
+  "android_sdk_configured": false,
+  "java_found": false,
+  "firebase_client_config_present": false,
+  "release_signing_config_present": false,
+  "server_fcm_enabled": false,
+  "server_credential_path_configured": false,
+  "backend_lock_screen_delivery_verified": false,
+  "real_phone_tested": false
+}

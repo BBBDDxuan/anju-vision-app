@@ -1,0 +1,5 @@
+# Local delivery archives and build outputs are not published to Git.
+package/
+builds/
+*.zip
+*.apk

@@ -1,0 +1,168 @@
+Unblock-File: 文件名、目录名或卷标语法不正确。 : 'X:\flutter-light\bin\internal\update_engine_version.ps1:Zone.Identifier'.
+00:00 +0: loading Y:/mobile-app/test/android_notices_test.dart
+00:00 +0: Y:/mobile-app/test/api_test.dart: all user routes use Bearer; health is public; contract bodies match
+00:00 +1: Y:/mobile-app/test/api_test.dart: IDs are encoded as a single path segment
+00:00 +2: Y:/mobile-app/test/api_test.dart: 401 is actionable and does not expose response secrets
+00:00 +3: Y:/mobile-app/test/api_test.dart: rejects envelope instead of list and non-image evidence
+00:00 +4: Y:/mobile-app/test/api_test.dart: timeouts are reported without URLs or tokens
+00:00 +5: Y:/mobile-app/test/api_test.dart: DELETE 404 is idempotent
+00:08 +6: Y:/mobile-app/test/controller_test.dart: blank security token never creates a live repository or fake data
+00:09 +7: Y:/mobile-app/test/controller_test.dart: video-only family preferences persist locally across restart
+00:09 +8: Y:/mobile-app/test/controller_test.dart: explicit fixture startup, one notice per new event, notification switch
+00:09 +9: Y:/mobile-app/test/controller_test.dart: foreground push and polling share one event notice
+00:09 +10: Y:/mobile-app/test/controller_test.dart: missing platform storage exposes warning and empty state, not sample data
+00:09 +11: Y:/mobile-app/test/controller_test.dart: late response from the old connection cannot replace new data
+00:09 +12: Y:/mobile-app/test/controller_test.dart: failed storage save preserves old repository and closes candidate
+00:17 +13: Y:/mobile-app/test/android_notices_test.dart: notification bridge reads permission results and opens native settings
+00:17 +14: Y:/mobile-app/test/android_notices_test.dart: missing platform status never masquerades as permission granted
+00:17 +15: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following _Exception was thrown running a test:
+Exception: Asset 'shaders/ink_sparkle.frag' not found
+
+When the exception was thrown, this was the stack:
+#0      new FragmentProgram._fromAsset (dart:ui/painting.dart:5415:7)
+#1      FragmentProgram.fromAsset.<anonymous closure> (dart:ui/painting.dart:5443:39)
+#12     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:189:18)
+#13     FakeAsync.flushMicrotasks (package:fake_async/fake_async.dart:200:32)
+#14     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2507:17)
+(elided 25 frames from dart:async and package:stack_trace)
+
+The test description was:
+  notification sheet refreshes after permission and settings round trip
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:22 +15 -1: Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip [E]
+  Test failed. See exception logs above.
+  The test description was: notification sheet refreshes after permission and settings round trip
+  
+00:22 +15 -1: Y:/mobile-app/test/android_notices_test.dart: 320px connection advanced polling field stays usable at text scale 1.0
+00:23 +16 -1: Y:/mobile-app/test/android_notices_test.dart: 320px connection advanced polling field stays usable at text scale 1.5
+00:35 +17 -1: Y:/mobile-app/test/household_test.dart: profiles, ambiguous bindings, manual association and persistence
+00:35 +18 -1: Y:/mobile-app/test/household_test.dart: track collisions and storage errors do not change profiles
+00:35 +19 -1: Y:/mobile-app/test/household_test.dart: local observations resolve locally and never appear as risks
+00:50 +20 -1: Y:/mobile-app/test/media_features_test.dart: camera validates LAN endpoint and encodes credentials without changing dual path
+00:50 +21 -1: Y:/mobile-app/test/media_features_test.dart: chunked upload preserves bytes, auth and exact progress without buffering full file
+00:53 +22 -1: Y:/mobile-app/test/media_features_test.dart: cancel and incorrect server offsets clean upload session; never complete
+00:54 +23 -1: Y:/mobile-app/test/media_features_test.dart: analysis modes explicit; resume preserves original job mode
+00:54 +24 -1: Y:/mobile-app/test/media_features_test.dart: workspace proxy authenticates session, streams auth/range, blocks redirects and retains camera denial
+01:05 +25 -1: Y:/mobile-app/test/fixture_repository_test.dart: test fixture implements authoritative idempotent ack and resolve states
+01:05 +26 -1: Y:/mobile-app/test/models_test.dart: legacy demo flags are ignored while real connection settings survive
+01:05 +27 -1: Y:/mobile-app/test/models_test.dart: legacy demo flags are ignored while real connection settings survive
+01:05 +28 -1: Y:/mobile-app/test/models_test.dart: empty household and family preferences round-trip without synthetic members
+01:05 +29 -1: Y:/mobile-app/test/models_test.dart: household migration retains profiles and real objects but drops sample records
+01:05 +30 -1: Y:/mobile-app/test/models_test.dart: default API uses 8010 and structured backend Review is readable
+01:05 +31 -1: Y:/mobile-app/test/models_test.dart: unified event fields are retained; optional values remain unknown
+01:05 +32 -1: Y:/mobile-app/test/models_test.dart: history filters intersect and use exclusive next-day boundary
+01:05 +33 -1: Y:/mobile-app/test/models_test.dart: URL validation rejects paths, userinfo, query and Bearer prefix
+01:05 +34 -1: Y:/mobile-app/test/models_test.dart: push deep links accept the event contract and reject foreign URLs
+01:20 +35 -1: Y:/mobile-app/test/navigation_manual_test.dart: (setUpAll)
+01:21 +35 -1: Y:/mobile-app/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following _Exception was thrown running a test:
+Exception: Asset 'shaders/ink_sparkle.frag' not found
+
+When the exception was thrown, this was the stack:
+#0      new FragmentProgram._fromAsset (dart:ui/painting.dart:5415:7)
+#1      FragmentProgram.fromAsset.<anonymous closure> (dart:ui/painting.dart:5443:39)
+#12     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:189:18)
+#13     FakeAsync.flushMicrotasks (package:fake_async/fake_async.dart:200:32)
+#14     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2507:17)
+(elided 25 frames from dart:async and package:stack_trace)
+
+The test description was:
+  devices keep camera and video routes; My keeps members and manual
+════════════════════════════════════════════════════════════════════════════════════════════════════
+01:26 +35 -2: Y:/mobile-app/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual [E]
+  Test failed. See exception logs above.
+  The test description was: devices keep camera and video routes; My keeps members and manual
+  
+01:26 +35 -2: Y:/mobile-app/test/navigation_manual_test.dart: offline manual loads full content and searches chapters
+01:27 +36 -2: Y:/mobile-app/test/navigation_manual_test.dart: (tearDownAll)
+01:31 +36 -2: Y:/mobile-app/test/object_api_test.dart: original recording routes, evidence and explicit no-cloud query
+01:31 +37 -2: Y:/mobile-app/test/object_api_test.dart: cloud opt-in reaches original request flag
+01:31 +38 -2: Y:/mobile-app/test/object_api_test.dart: last observed objects and evidence frames preserve original identifiers
+01:43 +39 -2: Y:/mobile-app/test/original_service_test.dart: live original backend query, memory, replay, frame and video address
+  Skip: Run only against tool/original_api_fixture.py
+02:00 +39 ~1 -2: Y:/mobile-app/test/product_test.dart: search history survives restart without inventing recent objects
+02:01 +40 ~1 -2: Y:/mobile-app/test/product_test.dart: three areas separate events and support object search
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following _Exception was thrown running a test:
+Exception: Asset 'shaders/ink_sparkle.frag' not found
+
+When the exception was thrown, this was the stack:
+#0      new FragmentProgram._fromAsset (dart:ui/painting.dart:5415:7)
+#1      FragmentProgram.fromAsset.<anonymous closure> (dart:ui/painting.dart:5443:39)
+#12     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:189:18)
+#13     FakeAsync.flushMicrotasks (package:fake_async/fake_async.dart:200:32)
+#14     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2507:17)
+(elided 25 frames from dart:async and package:stack_trace)
+
+The test description was:
+  three areas separate events and support object search
+════════════════════════════════════════════════════════════════════════════════════════════════════
+02:03 +40 ~1 -3: Y:/mobile-app/test/product_test.dart: three areas separate events and support object search [E]
+  Test failed. See exception logs above.
+  The test description was: three areas separate events and support object search
+  
+02:03 +40 ~1 -3: Y:/mobile-app/test/product_test.dart: member profile can be edited from its card
+02:04 +41 ~1 -3: Y:/mobile-app/test/product_test.dart: small display with large text and tablet remain usable
+02:06 +42 ~1 -3: Y:/mobile-app/test/product_test.dart: camera workspace is usable on a small display and has no photo analysis
+02:13 +43 ~1 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: original backend safety API, evidence frame and acknowledgement roundtrip
+  Skip: Requires isolated original backend fixture
+02:13 +43 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: video mapping excludes smoke/sparks/mock and links each alert to its own evidence
+02:13 +44 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: evidence cannot send service tokens to another origin
+02:13 +45 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: live failure does not hide video alerts or their acknowledgement/evidence
+02:13 +46 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: new video events notify once; initial history/reconnect do not flood notices
+02:13 +47 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: standalone video persists notification preferences without safety backend
+02:13 +48 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: acknowledgement needs authoritative readback, not only successful POST
+02:13 +49 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: ack readback survives a later failed video refresh without reverting cache
+02:13 +50 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: video events publish before a slow live source completes
+02:13 +51 ~2 -3: Y:/mobile-app/test/video_alerts_integration_test.dart: one failed video retains cached alerts without hiding successful videos
+02:26 +52 ~2 -3: Y:/mobile-app/test/widget_test.dart: unconfigured app starts with empty data without Firebase
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following _Exception was thrown running a test:
+Exception: Asset 'shaders/ink_sparkle.frag' not found
+
+When the exception was thrown, this was the stack:
+#0      new FragmentProgram._fromAsset (dart:ui/painting.dart:5415:7)
+#1      FragmentProgram.fromAsset.<anonymous closure> (dart:ui/painting.dart:5443:39)
+#12     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:189:18)
+#13     FakeAsync.flushMicrotasks (package:fake_async/fake_async.dart:200:32)
+#14     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2507:17)
+(elided 25 frames from dart:async and package:stack_trace)
+
+The test description was:
+  unconfigured app starts with empty data without Firebase
+════════════════════════════════════════════════════════════════════════════════════════════════════
+02:28 +52 ~2 -4: Y:/mobile-app/test/widget_test.dart: unconfigured app starts with empty data without Firebase [E]
+  Test failed. See exception logs above.
+  The test description was: unconfigured app starts with empty data without Firebase
+  
+02:28 +52 ~2 -4: Y:/mobile-app/test/widget_test.dart: detail ack and confirmed resolve read back authoritative states
+02:34 +53 ~2 -4: Y:/mobile-app/test/notifications/alert_gate_test.dart: persistent scoped notice gate covers history, repeats, restart, concurrency and failure
+test/notifications/android_bridge_test.dart:77:16: Error: The argument type 'MemoryNoticeStore' can't be assigned to the parameter type 'NoticeStateStore'.
+ - 'MemoryNoticeStore' is from 'test/notifications/gate_scenarios.dart'.
+ - 'NoticeStateStore' is from 'package:elder_safety_mobile/services/notifications/alert_gate.dart' ('lib/services/notifications/alert_gate.dart').
+        store: MemoryNoticeStore(),
+               ^
+02:46 +54 ~2 -4: Y:/mobile-app/test/notifications/push_registration_test.dart: rotation preserves old token on failure and deletes only own registration
+02:47 +55 ~2 -4: Y:/mobile-app/test/notifications/push_registration_test.dart: interrupted stale-token cleanup retries on same-token configure
+02:47 +56 ~2 -4: Y:/mobile-app/test/notifications/push_registration_test.dart: unified FCM payload resolves stable alert ID rather than source event
+02:47 +57 ~2 -4: Y:/mobile-app/test/notifications/push_registration_test.dart: permission denial removes only own registration and never reports success
+02:47 +58 ~2 -4: Y:/mobile-app/test/notifications/push_registration_test.dart: unchanged token is restored after server registration table reset
+02:53 +59 ~2 -5: loading Y:/mobile-app/test/notifications/android_bridge_test.dart [E]
+  Failed to load "Y:/mobile-app/test/notifications/android_bridge_test.dart":
+  Compilation failed for testPath=Y:/mobile-app/test/notifications/android_bridge_test.dart: test/notifications/android_bridge_test.dart:77:16: Error: The argument type 'MemoryNoticeStore' can't be assigned to the parameter type 'NoticeStateStore'.
+   - 'MemoryNoticeStore' is from 'test/notifications/gate_scenarios.dart'.
+   - 'NoticeStateStore' is from 'package:elder_safety_mobile/services/notifications/alert_gate.dart' ('lib/services/notifications/alert_gate.dart').
+          store: MemoryNoticeStore(),
+                 ^
+  .
+02:53 +59 ~2 -5: Some tests failed.
+
+Failing tests:
+  Y:/mobile-app/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+  Y:/mobile-app/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+  Y:/mobile-app/test/notifications/android_bridge_test.dart: loading Y:/mobile-app/test/notifications/android_bridge_test.dart
+  Y:/mobile-app/test/product_test.dart: three areas separate events and support object search
+  Y:/mobile-app/test/widget_test.dart: unconfigured app starts with empty data without Firebase
