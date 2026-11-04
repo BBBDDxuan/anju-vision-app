@@ -1,0 +1,22 @@
+# Local state and secrets for the server and future client source.
+.env
+.env.*
+!.env.example
+.venv/
+.venv-gpu/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+runtime/
+data/
+review/
+recordings/
+node_modules/
+.dart_tool/
+build/
+*.jks
+*.keystore
+key.properties
+local.properties
+google-services.json
+GoogleService-Info.plist

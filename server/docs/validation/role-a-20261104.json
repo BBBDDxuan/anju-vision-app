@@ -1,0 +1,76 @@
+{
+  "recorded_at": "2026-11-04T03:34:09.040000+00:00",
+  "contract_version": "2026-11-04.v1",
+  "full_regression": {
+    "command": "& .\\test.ps1",
+    "passed": 1001,
+    "suites": {
+      "backend": 403,
+      "safety": 22,
+      "detector": 576
+    },
+    "stage": "before_final_run_binding_fix"
+  },
+  "final_focused_regression": {
+    "passed": 95,
+    "stage": "after_final_run_binding_fix",
+    "suites": [
+      "test_alert_center",
+      "test_phone_access",
+      "test_safety",
+      "test_hybrid_jobs"
+    ]
+  },
+  "initial_regression_failure": "One pre-existing activity-metering fixture timed out; isolated it from real GPU scanning, then full rerun passed.",
+  "warning": "Existing Starlette TestClient httpx deprecation warning",
+  "launcher_smoke": {
+    "passed": true,
+    "isolated_data": true,
+    "public_port": 9230,
+    "internal_port": 9231,
+    "address": "computer_lan_ipv4",
+    "checks": [
+      "single_origin_auth",
+      "gateway_health",
+      "source_readiness",
+      "safety_proxy",
+      "remote_camera_control_forbidden",
+      "internal_listener_loopback_only",
+      "unconfigured_push_reported",
+      "network_model_disabled_reported"
+    ],
+    "real_phone": false,
+    "camera": false,
+    "paid_model": false,
+    "fcm": false,
+    "stopped": true
+  },
+  "documentation_links_checked": 13,
+  "real_acceptance": {
+    "two_phones": false,
+    "live_camera_alert": false,
+    "recording_alert": false,
+    "real_qwen": false,
+    "foreground_delivery": false,
+    "background_delivery": false,
+    "lockscreen_delivery": false,
+    "c_push_module": false
+  },
+  "production_service_started": false,
+  "firewall_changed": false,
+  "committed": false,
+  "pushed": false,
+  "publication_note": "Implementation-stage evidence; Git publication is recorded by repository history.",
+  "publication_checks": {
+    "packaged_tests_passed": 103,
+    "packaged_tests_skipped": 1,
+    "skip_reason": "Server is a subdirectory of the App Git repository; delivery ignore rules checked separately at repository root.",
+    "packaged_launcher_check_passed": true,
+    "bundled_assets_hashes_verified": true,
+    "staged_credentials_and_media_exclusion_checked": true,
+    "historical_delivery_files_preserved": true,
+    "new_dependencies_installed": false,
+    "paid_model_calls": 0,
+    "camera_connections": 0
+  }
+}
