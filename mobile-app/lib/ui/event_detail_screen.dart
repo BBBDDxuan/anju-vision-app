@@ -117,6 +117,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  String _evidenceCaption(SafetyEvent event) {
+    final image = event.details['primary_evidence'] as Map?;
+    final phase = image?['phase'];
+    final label = switch (phase) {
+      'post_event' => '摔倒后画面',
+      'during_event' =>
+        event.eventType == 'fire_detected' ? '明火发生时画面' : '求助发生时画面',
+      'trigger_fallback' => '缺少摔倒后画面，当前为触发附近截图',
+      _ => '历史截图未标注取证时点，请结合原片核实',
+    };
+    final offset = image?['video_offset_ms'];
+    if (!event.fromVideo || offset is! num) return label;
+    final seconds = (offset.toInt() / 1000).toStringAsFixed(2);
+    return '$label · 原片 $seconds 秒';
+  }
+
   Future<void> _act(bool resolve) async {
     if (_acting || _loading || _event == null) return;
     if (_event!.withdrawn ||
@@ -382,7 +398,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         videoId: event.details['video_id']?.toString() ?? '',
                         playbackPath: event.details['playback_url'] as String,
                         startMs:
-                            (event.details['start_ms'] as num?)?.toInt() ?? 0,
+                            ((event.details['playback_start_ms'] ??
+                                    event.details['start_ms']) as num?)?.toInt() ??
+                            0,
                       ),
                     ],
                     SectionTitle(
@@ -393,6 +411,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           : '现场证据',
                       caption: event.fromVideo ? '原录像截图，不代表实时画面' : '从可核对的信息开始',
                     ),
+                    if (_image != null && event.isUnified)
+                      InfoBanner(_evidenceCaption(event)),
                     if (_image != null)
                       GestureDetector(
                         onTap: () => showDialog<void>(

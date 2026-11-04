@@ -1,0 +1,8 @@
+{
+  "authorization": "User requested event-phase evidence correction and GitHub synchronization on 2026-11-04. Original B baseline remains intact; only the named files have an exact-hash exception.",
+  "files": {
+    "mobile-app/lib/models/unified_alert.dart": "49f948b33fc80bddd18dc1fde73f4778f25c81f7a74e7b0608f56f34b62cc774",
+    "mobile-app/lib/ui/event_detail_screen.dart": "92fedaca18b1ed50a2c65045a6df7f84aa26d9ee98f68acbfb0f8ee8b1e2977d",
+    "mobile-app/test/evidence_selection_test.dart": "dec0a0f99b57168de4d4553da1166fbf58c049798b4269e3ef253d90e9d73f47"
+  }
+}

@@ -89,6 +89,8 @@ SafetyEvent unifiedAlertFromJson(Map<String, dynamic> json) {
   final evidence = (json['evidence'] as List? ?? [])
       .map((raw) => Map<String, dynamic>.from(raw as Map))
       .toList();
+  final kind = field(json, 'event_type', 'unknown');
+  final primary = primaryAlertEvidence(kind, evidence);
   final handling = field(json, 'handling_status', 'unknown');
   return SafetyEvent(
     id: id,
@@ -100,7 +102,7 @@ SafetyEvent unifiedAlertFromJson(Map<String, dynamic> json) {
     confidence: (json['confidence'] as num?)?.toDouble(),
     occurredAt: dateField(json, 'occurred_at'),
     createdAt: dateField(json, 'created_at'),
-    evidenceId: evidence.isEmpty ? null : evidence.first['url']?.toString(),
+    evidenceId: primary?['url']?.toString(),
     reviewStatus: field(json, 'review_status', 'unknown'),
     reviewSummary: field(json, 'review_reason'),
     notificationStatus: field(json, 'notification_status', 'unknown'),
@@ -113,8 +115,38 @@ SafetyEvent unifiedAlertFromJson(Map<String, dynamic> json) {
       ...json,
       'unified_alert': true,
       'evidence': evidence,
+      'primary_evidence': primary,
+      'playback_start_ms':
+          primary?['video_offset_ms'] ??
+          json['playback_offset_ms'] ??
+          json['video_offset_ms'],
       'start_ms': json['video_offset_ms'],
       'end_ms': json['video_end_ms'],
     },
   );
+}
+
+/// Prefer the server's event-phase image. Older servers remain readable, but
+/// their image is never labelled as proof of a particular event phase.
+Map<String, dynamic>? primaryAlertEvidence(
+  String kind,
+  List<Map<String, dynamic>> evidence,
+) {
+  final usable = evidence
+      .where((e) => e['url'] is String && (e['url'] as String).isNotEmpty)
+      .toList();
+  if (usable.isEmpty) return null;
+  final phase = kind == 'suspected_fall' ? 'post_event' : 'during_event';
+  for (final image in usable) {
+    if (image['phase'] == phase) return image;
+  }
+  for (final image in usable) {
+    if (image['phase'] == 'trigger_fallback') return image;
+  }
+  final timed = usable.where((e) => e['video_offset_ms'] is num).toList()
+    ..sort(
+      (a, b) =>
+          (b['video_offset_ms'] as num).compareTo(a['video_offset_ms'] as num),
+    );
+  return timed.isEmpty ? usable.first : timed.first;
 }
