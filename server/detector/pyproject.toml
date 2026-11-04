@@ -1,4 +1,0 @@
-[tool.pytest.ini_options]
-testpaths = ["../safety/tests", "ai-service/tests"]
-pythonpath = ["../safety", "ai-service"]
-addopts = "-ra"
