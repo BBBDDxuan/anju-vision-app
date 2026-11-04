@@ -79,7 +79,7 @@ class _ManualScreenState extends State<ManualScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                       children: [
                         const InfoBanner(
-                          '安居视界 v1.2.1 · 全部章节离线可读。点击章节展开；搜索可筛选相关章节。',
+                          '安居视界 v1.2.2 · 全部章节离线可读。点击章节展开；搜索可筛选相关章节。',
                         ),
                         const SizedBox(height: 12),
                         if (matches.isEmpty)
