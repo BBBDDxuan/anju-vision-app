@@ -68,6 +68,10 @@ $signer = Get-ChildItem -LiteralPath (Join-Path $env:ANDROID_HOME 'build-tools')
     Sort-Object FullName -Descending | Select-Object -First 1
 if (-not $signer) { throw 'Android apksigner was not found.' }
 $priorFirebase = $env:ORG_GRADLE_PROJECT_enableFirebase
+$incrementalProperty = 'ORG_GRADLE_PROJECT_kotlin.incremental'
+$priorIncremental = [Environment]::GetEnvironmentVariable($incrementalProperty, 'Process')
+# Kotlin incremental caches cannot relativize pub-cache files across drive aliases.
+[Environment]::SetEnvironmentVariable($incrementalProperty, 'false', 'Process')
 Push-Location -LiteralPath $mobileRoot
 try {
     if ($WithFirebase) {
@@ -123,4 +127,5 @@ try {
 } finally {
     Pop-Location
     $env:ORG_GRADLE_PROJECT_enableFirebase = $priorFirebase
+    [Environment]::SetEnvironmentVariable($incrementalProperty, $priorIncremental, 'Process')
 }
