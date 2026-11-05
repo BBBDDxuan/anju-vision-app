@@ -6,6 +6,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_controller.dart';
 import 'services/android_notices.dart';
 import 'services/app_notification_binding.dart';
+import 'services/app_updates.dart';
+import 'ui/app_update_screen.dart';
 import 'ui/event_detail_screen.dart';
 
 import 'ui/home_screen.dart';
@@ -27,6 +29,9 @@ class ElderSafetyApp extends StatefulWidget {
 
 class _ElderSafetyAppState extends State<ElderSafetyApp>
     with WidgetsBindingObserver {
+  final _updates = AppUpdateManager();
+  String? _promptedUpdate;
+  Timer? _updateTimer;
   final _navigator = GlobalKey<NavigatorState>();
   final _messenger = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<EventNotice>? _notices;
@@ -47,6 +52,12 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _updates.addListener(_updateChanged);
+    widget.controller.addListener(_syncUpdateConnection);
+    unawaited(_updates.initialize());
+    _updateTimer = Timer.periodic(const Duration(minutes: 30), (_) {
+      if (_active) unawaited(_updates.check());
+    });
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     _active = lifecycle == null || lifecycle == AppLifecycleState.resumed;
     _nativeReady = _initializeNativeNotices();
@@ -93,6 +104,26 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
         _openEvent(id);
       }
     });
+  }
+
+  void _syncUpdateConnection() {
+    final c = widget.controller;
+    if (!c.initialized) return;
+    _updates.configure(c.configuring ? null : c.settings);
+  }
+
+  void _updateChanged() {
+    if (!mounted || !_active || !_updates.ready || _updates.release == null) return;
+    final digest = _updates.release!.sha256;
+    if (_promptedUpdate == digest) return;
+    _promptedUpdate = digest;
+    _messenger.currentState?.showSnackBar(SnackBar(
+      content: const Text('新版已下载，可安装更新'),
+      duration: const Duration(seconds: 20),
+      action: SnackBarAction(label: '查看', onPressed: () {
+        unawaited(_navigator.currentState?.push<void>(MaterialPageRoute(builder: (_) => AppUpdateScreen(updates: _updates))));
+      }),
+    ));
   }
 
   Future<void> _initializeNativeNotices() async {
@@ -315,6 +346,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _active = state == AppLifecycleState.resumed;
     widget.controller.setActive(_active);
+    if (_active) { unawaited(_updates.check()); _updateChanged(); }
   }
 
   @override
@@ -345,7 +377,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
           ),
           DevicesScreen(controller: controller, openEvent: _openEvent),
           HistoryScreen(controller: controller, openEvent: _openEvent),
-          SettingsScreen(controller: controller, openMembers: _openMembers),
+          SettingsScreen(controller: controller, openMembers: _openMembers, updates: _updates),
         ];
         return PopScope(
           canPop: _tab == 0,
@@ -380,7 +412,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
                   padding: const EdgeInsets.only(right: 20),
                   child: Center(
                     child: Pill(
-                      _tab == 3 ? 'v1.2.2' : '家庭守护',
+                      _tab == 3 ? 'v1.2.4' : '家庭守护',
                       icon: Icons.shield_outlined,
                     ),
                   ),
@@ -498,6 +530,10 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.controller.removeListener(_syncUpdateConnection);
+    _updates.removeListener(_updateChanged);
+    _updateTimer?.cancel();
+    _updates.dispose();
     unawaited(_notices?.cancel());
     unawaited(_opens?.cancel());
     unawaited(_alertOpens?.cancel());

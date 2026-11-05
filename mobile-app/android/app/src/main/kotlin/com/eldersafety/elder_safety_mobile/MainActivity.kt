@@ -20,6 +20,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelId = "elder_safety_alerts_v1"
     private var bridge: MethodChannel? = null
+    private var appUpdateBridge: AppUpdateBridge? = null
     private var initialEvent: String? = null
     private var initialScope: String? = null
     private var notificationsReady = false
@@ -120,6 +121,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        appUpdateBridge?.close()
+        appUpdateBridge = AppUpdateBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         flutterEngine.platformViewsController.registry.registerViewFactory("anju/rtsp-view", RtspViewFactory(flutterEngine.dartExecutor.binaryMessenger))
         // Create the channel even when Firebase is disabled.
         createChannel()
@@ -222,6 +225,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        appUpdateBridge?.close()
+        appUpdateBridge = null
         notificationsReady = false
         permissionResult?.error("ACTIVITY_DESTROYED", "请返回应用后重新检查通知权限", null)
         permissionResult = null

@@ -8,11 +8,14 @@ import '../services/settings_store.dart';
 import '../services/push_service.dart';
 import 'widgets.dart';
 import 'manual_screen.dart';
+import 'app_update_screen.dart';
+import '../services/app_updates.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.controller, this.openMembers});
+  const SettingsScreen({super.key, required this.controller, this.openMembers, this.updates});
   final SafetyController controller;
   final VoidCallback? openMembers;
+  final AppUpdateManager? updates;
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -123,6 +126,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 () => _open(context, _ConnectionSheet(controller: c)),
               ),
               const Divider(indent: 56),
+              if (widget.updates != null) ...[
+                ListenableBuilder(listenable: widget.updates!, builder: (context, _) => _row(
+                  Icons.system_update_rounded, '软件更新', widget.updates!.message,
+                  () => _open(context, AppUpdateScreen(updates: widget.updates!)),
+                )),
+                const Divider(indent: 56),
+              ],
               _row(
                 Icons.help_outline_rounded,
                 '使用帮助',
@@ -145,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const BrandMark(size: 32),
               const SizedBox(height: 10),
               const Text(
-                '安居视界  1.2.2',
+                '安居视界  1.2.4',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -162,7 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () => showAboutDialog(
                   context: context,
                   applicationName: '安居视界',
-                  applicationVersion: '1.2.2',
+                  applicationVersion: widget.updates?.installed?.name ?? '1.2.4',
                   applicationIcon: const BrandMark(size: 48),
                   children: [
                     const Text('居家安全事件提醒与家庭协作。AI 信息用于辅助核实；请结合实际情况处理。'),

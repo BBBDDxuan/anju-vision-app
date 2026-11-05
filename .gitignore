@@ -1,0 +1,2 @@
+# APK releases stay on the local computer; existing tracked historical artifacts are unaffected.
+*.apk
