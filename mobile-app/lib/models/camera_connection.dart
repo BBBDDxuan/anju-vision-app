@@ -20,13 +20,14 @@ class CameraConnection {
     if (port < 1 || port > 65535) return '端口应为 1–65535';
     if (username.trim().isEmpty ||
         username.length > 64 ||
-        password.isEmpty ||
+        password.trim().isEmpty ||
+        RegExp(r'[\x00-\x1f\x7f]').hasMatch(username + password) ||
         password.length > 256)
       return '请填写摄像头本地用户名和密码';
-    if (path.isEmpty ||
+    if (path.replaceFirst(RegExp(r'^/+'), '').isEmpty ||
         path.length > 256 ||
         path.contains('://') ||
-        RegExp(r'[\s#\r\n]').hasMatch(path) ||
+        RegExp(r'[\s#\\\x00-\x1f\x7f]').hasMatch(path) ||
         path.contains('..'))
       return '视频路径不正确';
     return null;

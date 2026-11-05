@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/household.dart';
+import '../models/camera_connection.dart';
 import 'object_api.dart';
 import 'api.dart';
 
@@ -33,11 +34,19 @@ class MediaApi extends ObjectApi {
     await postJson('${videoPath(id)}/delete');
   }
 
-  Future<Map<String, dynamic>> cameraStatus() => getJson('/api/camera/status');
+  Future<Map<String, dynamic>> cameraStatus() =>
+      getJson('/api/monitoring/camera');
+  Future<Map<String, dynamic>> connectCamera(CameraConnection camera) {
+    if (camera.validationError != null) {
+      throw ApiException(camera.validationError!);
+    }
+    return postJson('/api/monitoring/camera', camera.toJson());
+  }
+
   Future<Map<String, dynamic>> cameraCommand(String action) {
     if (!{'start', 'stop'}.contains(action))
       throw const ApiException('摄像头操作无效');
-    return postJson('/api/camera/$action');
+    return postJson('/api/monitoring/camera/$action');
   }
 
   /// Bounded chunks match the original web backend; no whole-video RAM buffering.

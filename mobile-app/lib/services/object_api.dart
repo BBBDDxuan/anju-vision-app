@@ -148,6 +148,9 @@ class ObjectApi {
           /* Never display arbitrary server bodies or credentials. */
         }
         final known = switch (code) {
+          'CAMERA_UNREACHABLE' => '电脑后端无法连接摄像头，请检查电脑到摄像头的网络和 RTSP 端口',
+          'CAMERA_ALERT_RELAY_MISSING' => '摄像头告警身份未配置，请由后端负责人重新运行手机服务配置',
+          'CAMERA_RUNTIME_MISSING' => '电脑上的摄像头模型运行环境未就绪',
           'TRANSCODE_FAILED' => '视频转码失败，请由后端检查 FFmpeg 与编码兼容性',
           'MODEL_NOT_CONFIGURED' ||
           'NETWORK_DISABLED' ||
