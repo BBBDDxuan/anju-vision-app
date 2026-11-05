@@ -28,9 +28,11 @@ class MemberProfile {
     this.relationship = '',
     this.notes = '',
     this.bindings = const [],
+    this.faceSampleCount = 0,
+    this.revision = 0,
   });
   final String id, name, relationship, notes;
-  final int number;
+  final int number, faceSampleCount, revision;
   final List<MemberBinding> bindings;
   String get displayName => name.trim().isEmpty ? '成员$number' : name.trim();
   Map<String, dynamic> toJson() => {
@@ -40,10 +42,14 @@ class MemberProfile {
     'relationship': relationship,
     'notes': notes,
     'bindings': bindings.map((e) => e.toJson()).toList(),
+    'face_sample_count': faceSampleCount,
+    'revision': revision,
   };
   factory MemberProfile.fromJson(Map<String, dynamic> j) => MemberProfile(
     id: field(j, 'id'),
     number: (j['number'] as num?)?.toInt() ?? 1,
+    faceSampleCount: (j['face_sample_count'] as num?)?.toInt() ?? 0,
+    revision: (j['revision'] as num?)?.toInt() ?? 0,
     name: field(j, 'name'),
     relationship: field(j, 'relationship'),
     notes: field(j, 'notes'),
@@ -56,6 +62,8 @@ class MemberProfile {
     String? relationship,
     String? notes,
     List<MemberBinding>? bindings,
+    int? faceSampleCount,
+    int? revision,
   }) => MemberProfile(
     id: id,
     number: number,
@@ -63,6 +71,8 @@ class MemberProfile {
     relationship: relationship ?? this.relationship,
     notes: notes ?? this.notes,
     bindings: bindings ?? this.bindings,
+    faceSampleCount: faceSampleCount ?? this.faceSampleCount,
+    revision: revision ?? this.revision,
   );
 }
 
@@ -152,8 +162,12 @@ class HouseholdData {
     this.objects = const ObjectServiceConfig(),
     this.familyPreferences = FamilyPreferences.defaults,
     this.camera = const CameraConnection(),
+    this.sharedMembers = const {},
+    this.memberImports = const {},
   });
   final List<MemberProfile> members;
+  final Map<String, List<MemberProfile>> sharedMembers;
+  final Map<String, Map<String, String>> memberImports;
   final int nextMemberNumber;
   final Map<String, String> eventMembers;
   final List<SafetyEvent> localEvents;
@@ -165,7 +179,11 @@ class HouseholdData {
   factory HouseholdData.initial() =>
       HouseholdData(members: const [], nextMemberNumber: 1);
   Map<String, dynamic> toJson() => {
-    'schema': 1,
+    'schema': 2,
+    'member_imports': memberImports,
+    'shared_members': sharedMembers.map(
+      (key, value) => MapEntry(key, value.map((m) => m.toJson()).toList()),
+    ),
     'members': members.map((e) => e.toJson()).toList(),
     'next_member_number': nextMemberNumber,
     'event_members': eventMembers,
@@ -177,6 +195,17 @@ class HouseholdData {
     'camera': camera.toJson(),
   };
   factory HouseholdData.fromJson(Map<String, dynamic> j) => HouseholdData(
+    memberImports: (j['member_imports'] as Map? ?? {}).map(
+      (k, v) => MapEntry(k.toString(), Map<String, String>.from(v)),
+    ),
+    sharedMembers: (j['shared_members'] as Map? ?? {}).map(
+      (key, value) => MapEntry(
+        key.toString(),
+        (value as List)
+            .map((m) => MemberProfile.fromJson(Map<String, dynamic>.from(m)))
+            .toList(),
+      ),
+    ),
     members: (j['members'] as List? ?? [])
         .map((e) => MemberProfile.fromJson(Map<String, dynamic>.from(e)))
         .toList(),
@@ -215,6 +244,8 @@ class HouseholdData {
     ObjectServiceConfig? objects,
     FamilyPreferences? familyPreferences,
     CameraConnection? camera,
+    Map<String, List<MemberProfile>>? sharedMembers,
+    Map<String, Map<String, String>>? memberImports,
   }) => HouseholdData(
     members: members ?? this.members,
     nextMemberNumber: nextMemberNumber ?? this.nextMemberNumber,
@@ -225,6 +256,8 @@ class HouseholdData {
     objects: objects ?? this.objects,
     familyPreferences: familyPreferences ?? this.familyPreferences,
     camera: camera ?? this.camera,
+    sharedMembers: sharedMembers ?? this.sharedMembers,
+    memberImports: memberImports ?? this.memberImports,
   );
 }
 

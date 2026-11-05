@@ -412,7 +412,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
                   padding: const EdgeInsets.only(right: 20),
                   child: Center(
                     child: Pill(
-                      _tab == 3 ? 'v1.2.4' : '家庭守护',
+                      _tab == 3 ? 'v1.3.0' : '家庭守护',
                       icon: Icons.shield_outlined,
                     ),
                   ),

@@ -78,7 +78,8 @@ void main() {
       await openFeature(t, '成员监护');
       await t.tap(find.text('家庭联系人').first);
       await t.pumpAndSettle();
-      expect(find.text('接收提醒的人'), findsOneWidget);
+      expect(find.text('接收提醒的人'), findsNothing);
+      expect(find.text('备用提醒延迟'), findsOneWidget);
       await t.tap(find.byType(BackButton).first);
       await t.pumpAndSettle();
       await openFeature(t, '家中风险');

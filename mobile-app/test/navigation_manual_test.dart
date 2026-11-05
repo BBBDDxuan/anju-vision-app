@@ -51,7 +51,9 @@ void main() {
       await tab('我的');
       await t.tap(find.text('被监护人员'));
       await t.pumpAndSettle();
-      expect(find.text('人员档案、设备范围与每一次观察'), findsOneWidget);
+      expect(find.text('人员档案、设备范围与每一次观察'), findsNothing);
+      expect(find.byType(SegmentedButton<int>), findsOneWidget);
+      expect(find.text('家庭联系人'), findsWidgets);
       await t.tap(find.byType(BackButton).first);
       await t.pumpAndSettle();
       await t.ensureVisible(find.text('使用帮助'));

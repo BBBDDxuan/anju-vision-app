@@ -31,10 +31,7 @@ Future<void> assignEventMember(
           style: TextStyle(fontSize: 12, color: Anju.muted),
         ),
         const SizedBox(height: 16),
-        for (final id in <String?>[
-          null,
-          ...c.household.members.map((m) => m.id),
-        ])
+        for (final id in <String?>[null, ...c.members.map((m) => m.id)])
           ListTile(
             leading: Icon(
               id == null ? Icons.person_search_outlined : Icons.person_outline,
@@ -79,7 +76,7 @@ class MemberAssociationCard extends StatelessWidget {
         child: ListTile(
           leading: const Icon(Icons.person_pin_outlined, color: Anju.green),
           title: Text(
-            id == null ? '成员待归属' : controller.memberById(id)!.displayName,
+            id == null ? '身份未确认' : controller.memberById(id)!.displayName,
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           ),
           subtitle: Text(

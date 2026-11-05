@@ -1,11 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../app_controller.dart';
 import '../models/models.dart';
 import '../models/household.dart';
 import 'widgets.dart';
 import 'settings_screen.dart' show ContactsEditor;
-import 'media_hub_screen.dart';
-import 'member_widgets.dart';
+import 'member_detail_screen.dart';
 
 class MembersScreen extends StatefulWidget {
   const MembersScreen({
@@ -22,18 +22,48 @@ class MembersScreen extends StatefulWidget {
 }
 
 class MembersScreenState extends State<MembersScreen> {
-  void showPeople() => setState(() => _peopleTab = 0);
-  String? _selected;
   int _peopleTab = 0;
-  bool _adding = false;
+  bool _adding = false, _importing = false;
+  void showPeople() => setState(() => _peopleTab = 0);
+  @override
+  void initState() {
+    super.initState();
+    unawaited(widget.controller.refreshMembers(force: true));
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([
+      widget.controller.refresh(),
+      widget.controller.refreshMembers(force: true),
+    ]);
+  }
+
+  void _openMember(MemberProfile member) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => MemberDetailScreen(
+          controller: widget.controller,
+          memberId: member.id,
+          openEvent: widget.openEvent,
+        ),
+      ),
+    );
+  }
+
   Future<void> _add() async {
     setState(() => _adding = true);
     try {
+      final before = widget.controller.members.map((m) => m.id).toSet();
       await widget.controller.addMember();
-      if (mounted) {
-        final member = widget.controller.household.members.last;
-        setState(() => _selected = member.id);
-        await editMember(context, widget.controller, member);
+      if (!mounted) return;
+      final added = widget.controller.members
+          .where((m) => !before.contains(m.id))
+          .firstOrNull;
+      if (added != null) {
+        await editMember(context, widget.controller, added);
+        if (mounted && widget.controller.memberById(added.id) != null)
+          _openMember(added);
       }
     } catch (e) {
       if (mounted)
@@ -45,365 +75,220 @@ class MembersScreenState extends State<MembersScreen> {
     }
   }
 
+  Future<void> _import() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('将旧档案复制到电脑？'),
+        content: const Text(
+          '复制本机旧成员的姓名、关系、备注和设备范围到当前电脑。原档案会保留；请勿重复复制，已有人脸资料不会随此操作迁移。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('复制档案'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    setState(() => _importing = true);
+    try {
+      await widget.controller.importLegacyMembers();
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
+  void _editContacts() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(
+        bottom:
+            MediaQuery.viewInsetsOf(ctx).bottom +
+            MediaQuery.viewPaddingOf(ctx).bottom,
+      ),
+      child: ContactsEditor(controller: widget.controller),
+    ),
+  );
   @override
-  Widget build(BuildContext context) {
-    final c = widget.controller;
-    final member = _selected == null ? null : c.memberById(_selected!);
-    final records = member == null
-        ? c.events.where(isPersonEvent).toList()
-        : c.recordsForMember(member.id);
-    final pending = records.where(eventNeedsAction).length;
-    return RefreshIndicator(
-      onRefresh: c.refresh,
-      child: ListView(
-        key: const PageStorageKey('members'),
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  '成员监护',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-                ),
-              ),
-              IconButton(
-                tooltip: '实时摄像头与视频',
-                onPressed: () => openMediaHub(context, c, camera: true),
-                icon: const Icon(
-                  Icons.offline_bolt_outlined,
-                  color: Anju.green,
-                ),
-              ),
-            ],
-          ),
-          const Text(
-            '人员档案、设备范围与每一次观察',
-            style: TextStyle(fontSize: 12, color: Anju.muted),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('被监护人员'),
-                  selected: _peopleTab == 0,
-                  showCheckmark: false,
-                  onSelected: (_) => setState(() => _peopleTab = 0),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('家庭联系人'),
-                  selected: _peopleTab == 1,
-                  showCheckmark: false,
-                  onSelected: (_) => setState(() => _peopleTab = 1),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          if (c.householdWarning != null)
-            InfoBanner(c.householdWarning!, error: true),
-          if (_peopleTab == 1) ...[
-            const Surface(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '接收提醒的人',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '家庭联系人负责接收和处理提醒，与被监护人员档案分别管理。',
-                    style: TextStyle(fontSize: 12, color: Anju.muted),
-                  ),
-                ],
-              ),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.controller,
+    builder: (context, _) {
+      final c = widget.controller;
+      final personEvents = c.events.where(isPersonEvent).toList();
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          key: const PageStorageKey('members'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          children: [
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: 0, label: Text('被监护人员')),
+                ButtonSegment(value: 1, label: Text('家庭联系人')),
+              ],
+              selected: {_peopleTab},
+              showSelectedIcon: false,
+              onSelectionChanged: (value) =>
+                  setState(() => _peopleTab = value.single),
             ),
-            const SizedBox(height: 16),
-            for (final contact in c.preferences.contacts)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Surface(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline, color: Anju.green),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              contact.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              contact.id == 'primary'
-                                  ? '主要联系人 · 优先提醒'
-                                  : '备用联系人 · 超时升级提醒',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Anju.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            FilledButton.icon(
-              onPressed: () => showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                useSafeArea: true,
-                showDragHandle: true,
-                builder: (ctx) => Padding(
-                  padding: EdgeInsets.only(
-                    bottom:
-                        MediaQuery.viewInsetsOf(ctx).bottom +
-                        MediaQuery.viewPaddingOf(ctx).bottom,
-                  ),
-                  child: ContactsEditor(controller: c),
-                ),
-              ),
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('编辑家庭联系人'),
-            ),
-          ] else ...[
-            Surface(
-              child: Row(
-                children: [
-                  const BrandMark(size: 48),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${c.household.members.length} 位被监护人员',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '$pending 条记录待处理 · 档案保存在本机',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Anju.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SectionTitle(
-              '被监护人员',
-              action: TextButton.icon(
-                onPressed: _adding ? null : _add,
-                icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-                label: const Text('添加成员'),
-              ),
-            ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _memberCard(null, c),
-                  for (final m in c.household.members) _memberCard(m, c),
-                ],
-              ),
-            ),
-            if (member != null) ...[
-              const SizedBox(height: 14),
+            const SizedBox(height: 20),
+            if (_peopleTab == 1) ...[
               Surface(
+                padding: EdgeInsets.zero,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            member.displayName,
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                    for (final contact in c.preferences.contacts)
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                        Pill('编号 成员${member.number}'),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      member.relationship.isEmpty
-                          ? '关系尚未填写'
-                          : member.relationship,
-                      style: const TextStyle(fontSize: 12, color: Anju.muted),
-                    ),
-                    if (member.notes.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          member.notes,
-                          style: const TextStyle(fontSize: 12),
+                        leading: const Icon(
+                          Icons.person_outline,
+                          color: Anju.green,
+                        ),
+                        title: Text(
+                          contact.name.trim().isEmpty ||
+                                  ['主要联系人', '备用联系人'].contains(contact.name)
+                              ? '未设置姓名'
+                              : contact.name,
+                        ),
+                        subtitle: Text(
+                          contact.id == 'primary'
+                              ? '主要联系人 · 优先接收提醒'
+                              : '备用联系人 · 无人确认时接收重要提醒',
                         ),
                       ),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => editMember(context, c, member),
-                          icon: const Icon(Icons.edit_outlined, size: 16),
-                          label: const Text('编辑档案'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () =>
-                              bindMemberDevices(context, c, member),
-                          icon: const Icon(Icons.link_rounded, size: 17),
-                          label: const Text('绑定设备'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '已绑定 ${member.bindings.where((b) => b.scope == c.serviceScope || b.scope == 'phone-local').length} 个设备范围',
-                      style: const TextStyle(fontSize: 11, color: Anju.muted),
+                    const Divider(height: 1),
+                    ListTile(
+                      title: const Text('备用提醒延迟'),
+                      subtitle: Text(_delay(c.preferences.escalationSeconds)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _editContacts,
                     ),
                   ],
                 ),
               ),
-            ],
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      MediaHubScreen(controller: c, initialMode: 'safety'),
-                ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _editContacts,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('编辑家庭联系人'),
               ),
-              icon: const Icon(Icons.accessibility_new_outlined),
-              label: const Text('导入视频 / 实时监护'),
-            ),
-            if (c.videoError != null)
-              InfoBanner('录像服务：${c.videoError}', error: true),
-            if (c.error != null) InfoBanner('统一后端：${c.error}', error: true),
-            SectionTitle(
-              member == null ? '人物事件' : '${member.displayName}的记录',
-              caption: '人物事件与家中风险分别展示',
-              action: TextButton(
-                onPressed: widget.openDevices,
-                child: const Text('设备管理 ›'),
-              ),
-            ),
-            if (records.isEmpty)
-              const Surface(
-                child: EmptyState(
-                  title: '暂无关联人物记录',
-                  message: '绑定设备范围，或在事件详情中人工关联成员。也可导入录像开展安全分析。',
-                  icon: Icons.person_search_outlined,
-                ),
-              ),
-            for (final e in records.take(60))
-              Column(
+            ] else ...[
+              if (c.memberSyncing) const LinearProgressIndicator(),
+              if (c.memberSyncError != null)
+                InfoBanner(c.memberSyncError!, error: true),
+              if (c.householdWarning != null)
+                InfoBanner(c.householdWarning!, error: true),
+              Row(
                 children: [
-                  EventTile(
-                    event: e,
-                    onTap: () => widget.openEvent(e.id),
-                    deviceLabel:
-                        '${c.nameForDevice(e.deviceId)} · ${c.memberIdFor(e) == null ? '待归属' : c.memberById(c.memberIdFor(e)!)!.displayName}',
-                  ),
-                  if (c.memberIdFor(e) == null)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => assignEventMember(context, c, e),
-                        child: const Text('关联成员'),
+                  Expanded(
+                    child: Text(
+                      c.usesSharedMembers ? '家庭成员' : '被监护人员',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _adding || !c.canEditMembers ? null : _add,
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: Text(_adding ? '添加中' : '添加成员'),
+                  ),
+                ],
+              ),
+              if (c.members.isEmpty)
+                const Surface(
+                  child: EmptyState(
+                    title: '还没有成员档案',
+                    message: '添加成员，录入人脸后可辅助识别提醒中的人员。',
+                    icon: Icons.person_add_alt_1_outlined,
+                  ),
+                ),
+              for (final member in c.members)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Surface(
+                    padding: EdgeInsets.zero,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Anju.light,
+                        child: Text(
+                          member.displayName.characters.first,
+                          style: const TextStyle(color: Anju.green),
+                        ),
+                      ),
+                      title: Text(
+                        member.displayName,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                        [
+                          if (member.relationship.isNotEmpty)
+                            member.relationship,
+                          '${c.recordsForMember(member.id).where(eventNeedsAction).length} 条待处理',
+                        ].join(' · '),
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _openMember(member),
+                    ),
+                  ),
+                ),
+              if (c.legacyMembers.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: _importing || !c.canEditMembers ? null : _import,
+                    icon: const Icon(Icons.upload_outlined),
+                    label: Text(_importing ? '正在复制旧档案' : '复制本机旧档案到电脑'),
+                  ),
+                ),
+              const SizedBox(height: 18),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('全部人物提醒'),
+                subtitle: Text('${personEvents.length} 条记录，点击展开'),
+                children: [
+                  if (personEvents.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('暂无人物提醒，可在设备页开始监护或导入录像。'),
+                    ),
+                  for (final event in personEvents.take(60))
+                    EventTile(
+                      event: event,
+                      onTap: () => widget.openEvent(event.id),
+                      deviceLabel: c.memberIdFor(event) == null
+                          ? '身份未确认'
+                          : c.memberById(c.memberIdFor(event)!)!.displayName,
                     ),
                 ],
               ),
-            const Padding(
-              padding: EdgeInsets.only(top: 14),
-              child: Text(
-                '设备范围绑定用于组织记录，不代表人脸识别。多人共用设备时请人工确认归属。',
-                style: TextStyle(fontSize: 11, color: Anju.muted, height: 1.7),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _memberCard(MemberProfile? m, SafetyController c) {
-    final active = m == null ? _selected == null : _selected == m.id;
-    return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => setState(() => _selected = m?.id),
-        child: Container(
-          width: 112,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: active ? Anju.green : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            children: [
-              CircleAvatar(
-                backgroundColor: active
-                    ? Colors.white.withValues(alpha: .15)
-                    : Anju.light,
-                child: Icon(
-                  m == null ? Icons.groups_outlined : Icons.person_outline,
-                  color: active ? Colors.white : Anju.green,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                m?.displayName ?? '全部成员',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: active ? Colors.white : Anju.ink,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                m == null
-                    ? '人物记录总览'
-                    : '${c.recordsForMember(m.id).length} 条关联记录',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: active ? const Color(0xffc2e7dd) : Anju.muted,
-                ),
-              ),
             ],
-          ),
+          ],
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+  String _delay(int seconds) =>
+      seconds % 60 == 0 ? '${seconds ~/ 60} 分钟' : '$seconds 秒';
 }
 
 Future<void> editMember(
@@ -478,7 +363,11 @@ class _MemberEditorState extends State<_MemberEditor> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除这个成员档案？'),
-        content: const Text('仅删除本机档案、绑定和人工关联，不删除安全事件。'),
+        content: Text(
+          widget.controller.usesSharedMembers
+              ? '删除电脑中的共享档案和全部人脸资料，其他手机同步后也将移除。安全事件会保留。'
+              : '删除本机档案、绑定和人工关联，安全事件会保留。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),

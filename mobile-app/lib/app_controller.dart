@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
+import 'services/members_api.dart';
 import 'package:flutter/foundation.dart';
 import 'models/models.dart';
 import 'models/unified_alert.dart';
@@ -27,7 +29,9 @@ class SafetyController extends ChangeNotifier {
     PushGateway? gateway,
     RepositoryFactory? repositoryFactory,
     ObjectApiFactory? videoApiFactory,
-  }) : _videoFactory =
+    MembersApi Function(AppSettings)? membersApiFactory,
+  }) : _membersFactory = membersApiFactory,
+       _videoFactory =
            videoApiFactory ??
            ((config) => ObjectApi(config, timeout: const Duration(seconds: 8))),
        _explicitRepository = repositoryFactory != null,
@@ -71,6 +75,7 @@ class SafetyController extends ChangeNotifier {
   final SettingsStore store;
   final RepositoryFactory _factory;
   final ObjectApiFactory _videoFactory;
+  final MembersApi Function(AppSettings)? _membersFactory;
   final bool _explicitRepository;
   late final PushCoordinator push;
   final notices = StreamController<EventNotice>.broadcast();
@@ -222,6 +227,7 @@ class SafetyController extends ChangeNotifier {
         refresh(),
       ]);
       await _configurePush();
+      await refreshMembers();
       _startPolling();
     } catch (_) {
       error = '初始化失败，请检查安全存储或连接设置后重试';
@@ -311,6 +317,7 @@ class SafetyController extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    unawaited(refreshMembers());
     if (usesUnifiedBackend) return _refreshUnified();
     if (_refreshing || configuring || _disposed) return;
     _refreshing = true;
@@ -533,6 +540,7 @@ class SafetyController extends ChangeNotifier {
     if (configuring) throw const ApiException('正在保存设置，请稍候');
     configuring = true;
     _generation++;
+    _resetMemberConnection();
     _refreshing = false;
     loading = false;
     _timer?.cancel();
@@ -582,13 +590,14 @@ class SafetyController extends ChangeNotifier {
       _startPolling();
     }
     await refresh();
+    await refreshMembers();
     await _configurePush();
     await _consumeScopedOpen();
   }
 
   Future<void> saveFamilyPreferences(FamilyPreferences next) async {
     if (next.escalationSeconds < 5 || next.escalationSeconds > 86400) {
-      throw const ApiException('升级等待需为 5–86400 整数秒');
+      throw const ApiException('备用联系人提醒延迟需为 5–86400 整数秒');
     }
     final generation = _generation;
     final current = _repository;
@@ -626,6 +635,207 @@ class SafetyController extends ChangeNotifier {
     _notify();
   }
 
+  bool get usesSharedMembers => !_explicitRepository || _membersFactory != null;
+  List<MemberProfile>? _remoteMembers;
+  MembersApi? _membersApi;
+  String? memberSyncError;
+  Map<String, dynamic> faceStatus = const {};
+  bool memberSyncing = false, memberBackendAvailable = false;
+  DateTime? _memberChecked;
+  int _memberMutation = 0;
+  List<MemberProfile> get members => usesSharedMembers
+      ? (_remoteMembers ?? household.sharedMembers[serviceScope] ?? const [])
+      : household.members;
+  List<MemberProfile> get legacyMembers => usesSharedMembers
+      ? household.members
+            .where(
+              (m) => !members.any(
+                (shared) =>
+                    shared.id == household.memberImports[serviceScope]?[m.id],
+              ),
+            )
+            .toList()
+      : const [];
+  bool get canEditMembers =>
+      !configuring && (!usesSharedMembers || memberBackendAvailable);
+  void _resetMemberConnection() {
+    _membersApi?.close();
+    _membersApi = null;
+    _remoteMembers = null;
+    memberBackendAvailable = false;
+    memberSyncing = false;
+    memberSyncError = null;
+    faceStatus = const {};
+    _memberChecked = null;
+    ++_memberMutation;
+  }
+
+  MembersApi _requireMembersApi() {
+    if (!usesSharedMembers ||
+        configuring ||
+        settings.bearerToken.isEmpty ||
+        _disposed)
+      throw const ApiException('请先连接电脑后端');
+    return _membersApi ??= (_membersFactory ?? MembersApi.new)(settings);
+  }
+
+  Future<void> _acceptRemoteMembers(
+    List<MemberProfile> value,
+    int generation, {
+    int? mutation,
+  }) async {
+    if (_disposed ||
+        generation != _generation ||
+        (mutation != null && mutation != _memberMutation))
+      return;
+    _remoteMembers = value;
+    memberBackendAvailable = true;
+    memberSyncError = null;
+    final scope = serviceScope;
+    try {
+      await _updateHousehold((data) {
+        if (_disposed ||
+            generation != _generation ||
+            (mutation != null && mutation != _memberMutation))
+          throw const ApiException('档案已更新，请重新刷新');
+        return data.copyWith(
+          sharedMembers: {...data.sharedMembers, scope: value},
+        );
+      });
+    } catch (_) {
+      if (!_disposed && generation == _generation) {
+        memberSyncError = '电脑档案已更新，本机离线缓存未保存';
+        _notify();
+      }
+    }
+  }
+
+  Future<void> refreshMembers({bool force = false}) async {
+    if (!usesSharedMembers ||
+        configuring ||
+        _disposed ||
+        settings.bearerToken.isEmpty ||
+        memberSyncing)
+      return;
+    if (!force &&
+        _memberChecked != null &&
+        DateTime.now().difference(_memberChecked!) <
+            const Duration(seconds: 30))
+      return;
+    final generation = _generation, mutation = _memberMutation;
+    memberSyncing = true;
+    _memberChecked = DateTime.now();
+    _notify();
+    try {
+      final api = _requireMembersApi();
+      final value = await api.members();
+      if (_disposed || generation != _generation || mutation != _memberMutation)
+        return;
+      await _acceptRemoteMembers(value, generation, mutation: mutation);
+      try {
+        final status = await api.status();
+        if (!_disposed &&
+            generation == _generation &&
+            mutation == _memberMutation)
+          faceStatus = status;
+      } catch (_) {
+        if (!_disposed && generation == _generation)
+          faceStatus = const {'ready': false};
+      }
+    } catch (e) {
+      if (!_disposed &&
+          generation == _generation &&
+          mutation == _memberMutation) {
+        memberBackendAvailable = false;
+        memberSyncError = '$e';
+      }
+    } finally {
+      if (!_disposed && generation == _generation) {
+        memberSyncing = false;
+        _notify();
+      }
+    }
+  }
+
+  String _newMemberId() {
+    final random = Random.secure();
+    return 'm-' +
+        List.generate(
+          16,
+          (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+        ).join();
+  }
+
+  Future<void> _saveRemoteMember(MemberProfile value) async {
+    final api = _requireMembersApi(), generation = _generation;
+    ++_memberMutation;
+    final saved = await api.save(value);
+    if (_disposed || generation != _generation) return;
+    ++_memberMutation;
+    final updated = [...members.where((m) => m.id != saved.id), saved]
+      ..sort((a, b) => a.number.compareTo(b.number));
+    await _acceptRemoteMembers(updated, generation);
+  }
+
+  Future<void> importLegacyMembers() async {
+    final generation = _generation, scope = serviceScope;
+    for (final old in List<MemberProfile>.of(legacyMembers)) {
+      if (_disposed || generation != _generation)
+        throw const ApiException('后端连接已改变，请重新选择');
+      final id = household.memberImports[scope]?[old.id] ?? _newMemberId();
+      // Persist the import identity BEFORE sending: retries cannot create another person.
+      await _updateHousehold(
+        (data) => data.copyWith(
+          memberImports: {
+            ...data.memberImports,
+            scope: {...?data.memberImports[scope], old.id: id},
+          },
+        ),
+      );
+      if (_disposed || generation != _generation)
+        throw const ApiException('后端连接已改变，请重新选择');
+      if (members.any((m) => m.id == id)) continue;
+      await _saveRemoteMember(
+        MemberProfile(
+          id: id,
+          number: members.length + 1,
+          name: old.name,
+          relationship: old.relationship,
+          notes: old.notes,
+          bindings: old.bindings,
+        ),
+      );
+    }
+  }
+
+  Future<void> enrollMemberFace(
+    String id,
+    Uint8List image, {
+    required bool consent,
+  }) async {
+    final member = memberById(id);
+    if (member == null) throw const ApiException('成员档案已不存在');
+    final api = _requireMembersApi(), generation = _generation;
+    ++_memberMutation;
+    await api.enroll(member, image, consent: consent);
+    if (_disposed || generation != _generation) return;
+    final mutation = ++_memberMutation;
+    final updated = await api.members();
+    if (!_disposed && generation == _generation && mutation == _memberMutation)
+      await _acceptRemoteMembers(updated, generation, mutation: mutation);
+  }
+
+  Future<void> clearMemberFaces(String id) async {
+    final api = _requireMembersApi(), generation = _generation;
+    ++_memberMutation;
+    await api.clearFaces(id);
+    if (_disposed || generation != _generation) return;
+    final mutation = ++_memberMutation;
+    final updated = await api.members();
+    if (!_disposed && generation == _generation && mutation == _memberMutation)
+      await _acceptRemoteMembers(updated, generation, mutation: mutation);
+  }
+
   String get serviceScope => settings.baseUrl.replaceAll(RegExp(r'/+$'), '');
   bool isLocalEvent(String id) => household.localEvents.any((e) => e.id == id);
   String eventScope(SafetyEvent event) => event.isUnified
@@ -638,7 +848,7 @@ class SafetyController extends ChangeNotifier {
   String eventAssociationKey(SafetyEvent event) =>
       '${eventScope(event)}|${event.id}';
   MemberProfile? memberById(String id) =>
-      household.members.where((e) => e.id == id).firstOrNull;
+      members.where((e) => e.id == id).firstOrNull;
   Future<void> _loadHousehold() async {
     final current = store;
     try {
@@ -672,50 +882,89 @@ class SafetyController extends ChangeNotifier {
     return operation;
   }
 
-  Future<void> addMember() => _updateHousehold((data) {
-    final number = data.nextMemberNumber;
-    return data.copyWith(
-      members: [
-        ...data.members,
-        MemberProfile(id: 'member-$number', number: number),
-      ],
-      nextMemberNumber: number + 1,
-    );
-  });
-  Future<void> saveMember(MemberProfile member) => _updateHousehold((data) {
-    if (member.displayName.length > 40 ||
-        member.relationship.length > 30 ||
-        member.notes.length > 500)
-      throw const ApiException('姓名最多 40 字，关系最多 30 字，备注最多 500 字');
-    if (!data.members.any((m) => m.id == member.id))
-      throw const ApiException('成员档案已不存在，请刷新');
-    for (final b in member.bindings) {
-      if (b.trackId.isNotEmpty &&
-          data.members.any(
-            (m) =>
-                m.id != member.id &&
-                m.bindings.any(
-                  (x) =>
-                      x.scope == b.scope &&
-                      x.deviceId == b.deviceId &&
-                      x.trackId == b.trackId,
-                ),
-          )) {
-        throw const ApiException('同一设备的该跟踪编号已绑定其他成员');
-      }
+  Future<void> addMember() async {
+    if (usesSharedMembers) {
+      await _saveRemoteMember(
+        MemberProfile(
+          id: _newMemberId(),
+          number:
+              members.fold<int>(0, (v, m) => v > m.number ? v : m.number) + 1,
+        ),
+      );
+      return;
     }
-    return data.copyWith(
-      members: data.members.map((m) => m.id == member.id ? member : m).toList(),
-    );
-  });
-  Future<void> deleteMember(String id) => _updateHousehold(
-    (data) => data.copyWith(
-      members: data.members.where((m) => m.id != id).toList(),
-      eventMembers: Map.fromEntries(
-        data.eventMembers.entries.where((e) => e.value != id),
+    await _updateHousehold((data) {
+      final number = data.nextMemberNumber;
+      return data.copyWith(
+        members: [
+          ...data.members,
+          MemberProfile(id: 'member-$number', number: number),
+        ],
+        nextMemberNumber: number + 1,
+      );
+    });
+  }
+
+  Future<void> saveMember(MemberProfile member) async {
+    if (usesSharedMembers) {
+      await _saveRemoteMember(member);
+      return;
+    }
+    await _updateHousehold((data) {
+      if (member.displayName.length > 40 ||
+          member.relationship.length > 30 ||
+          member.notes.length > 500)
+        throw const ApiException('姓名最多 40 字，关系最多 30 字，备注最多 500 字');
+      if (!data.members.any((m) => m.id == member.id))
+        throw const ApiException('成员档案已不存在，请刷新');
+      for (final b in member.bindings) {
+        if (b.trackId.isNotEmpty &&
+            data.members.any(
+              (m) =>
+                  m.id != member.id &&
+                  m.bindings.any(
+                    (x) =>
+                        x.scope == b.scope &&
+                        x.deviceId == b.deviceId &&
+                        x.trackId == b.trackId,
+                  ),
+            )) {
+          throw const ApiException('同一设备的该跟踪编号已绑定其他成员');
+        }
+      }
+      return data.copyWith(
+        members: data.members
+            .map((m) => m.id == member.id ? member : m)
+            .toList(),
+      );
+    });
+  }
+
+  Future<void> deleteMember(String id) async {
+    if (usesSharedMembers) {
+      final member = memberById(id);
+      if (member == null) throw const ApiException('成员档案已不存在');
+      final api = _requireMembersApi(), generation = _generation;
+      ++_memberMutation;
+      await api.delete(member);
+      if (_disposed || generation != _generation) return;
+      ++_memberMutation;
+      await _acceptRemoteMembers(
+        members.where((m) => m.id != id).toList(),
+        generation,
+      );
+      return;
+    }
+    await _updateHousehold(
+      (data) => data.copyWith(
+        members: data.members.where((m) => m.id != id).toList(),
+        eventMembers: Map.fromEntries(
+          data.eventMembers.entries.where((e) => e.value != id),
+        ),
       ),
-    ),
-  );
+    );
+  }
+
   String? memberIdFor(SafetyEvent event) {
     final key = eventAssociationKey(event);
     if (household.eventMembers.containsKey(key)) {
@@ -724,8 +973,10 @@ class SafetyController extends ChangeNotifier {
     }
     final marked = event.details['member_id']?.toString();
     if (marked != null && memberById(marked) != null) return marked;
+    // Shared-camera ranges cannot establish a person identity.
+    if (usesSharedMembers) return null;
     final scope = eventScope(event);
-    final exact = household.members
+    final exact = members
         .where(
           (m) => m.bindings.any(
             (b) =>
@@ -738,7 +989,7 @@ class SafetyController extends ChangeNotifier {
         .toList();
     if (exact.length == 1) return exact.single.id;
     if (exact.length > 1) return null;
-    final ranged = household.members
+    final ranged = members
         .where(
           (m) => m.bindings.any(
             (b) =>
@@ -756,7 +1007,8 @@ class SafetyController extends ChangeNotifier {
       return memberIdFor(event) == null ? '待归属' : '人工关联';
     final id = memberIdFor(event);
     if (id == null) return '待归属';
-    if (event.details['member_id']?.toString() == id) return '服务端成员标记';
+    if (event.details['member_id']?.toString() == id)
+      return event.details['face_identity'] is Map ? '人脸识别候选 · 请核对' : '服务端成员标记';
     final m = memberById(id)!;
     return m.bindings.any(
           (b) =>
@@ -771,7 +1023,7 @@ class SafetyController extends ChangeNotifier {
 
   Future<void> associateMember(SafetyEvent event, String? memberId) =>
       _updateHousehold((data) {
-        if (memberId != null && !data.members.any((m) => m.id == memberId))
+        if (memberId != null && !members.any((m) => m.id == memberId))
           throw const ApiException('请选择现有成员');
         return data.copyWith(
           eventMembers: {
@@ -1019,6 +1271,7 @@ class SafetyController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _generation++;
+    _resetMemberConnection();
     _videoApi?.close();
     _timer?.cancel();
     unawaited(

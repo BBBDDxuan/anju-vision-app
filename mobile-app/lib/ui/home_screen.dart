@@ -159,7 +159,7 @@ class HomeScreen extends StatelessWidget {
                   '成员监护',
                   '档案与人物事件',
                   Icons.groups_outlined,
-                  '${controller.household.members.length} 位成员',
+                  '${controller.members.length} 位成员',
                   openMembers,
                 ),
                 _feature(

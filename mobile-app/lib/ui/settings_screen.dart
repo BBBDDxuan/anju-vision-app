@@ -12,7 +12,12 @@ import 'app_update_screen.dart';
 import '../services/app_updates.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.controller, this.openMembers, this.updates});
+  const SettingsScreen({
+    super.key,
+    required this.controller,
+    this.openMembers,
+    this.updates,
+  });
   final SafetyController controller;
   final VoidCallback? openMembers;
   final AppUpdateManager? updates;
@@ -90,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _row(
                 Icons.badge_outlined,
                 '被监护人员',
-                '${c.household.members.length} 位本机档案 · 成员绑定与记录',
+                '${c.members.length} 位成员 · 档案与识别',
                 widget.openMembers,
               ),
               const Divider(indent: 56),
@@ -127,10 +132,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const Divider(indent: 56),
               if (widget.updates != null) ...[
-                ListenableBuilder(listenable: widget.updates!, builder: (context, _) => _row(
-                  Icons.system_update_rounded, '软件更新', widget.updates!.message,
-                  () => _open(context, AppUpdateScreen(updates: widget.updates!)),
-                )),
+                ListenableBuilder(
+                  listenable: widget.updates!,
+                  builder: (context, _) => _row(
+                    Icons.system_update_rounded,
+                    '软件更新',
+                    widget.updates!.message,
+                    () => _open(
+                      context,
+                      AppUpdateScreen(updates: widget.updates!),
+                    ),
+                  ),
+                ),
                 const Divider(indent: 56),
               ],
               _row(
@@ -155,7 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const BrandMark(size: 32),
               const SizedBox(height: 10),
               const Text(
-                '安居视界  1.2.4',
+                '安居视界  1.3.0',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -172,7 +185,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () => showAboutDialog(
                   context: context,
                   applicationName: '安居视界',
-                  applicationVersion: widget.updates?.installed?.name ?? '1.2.4',
+                  applicationVersion:
+                      widget.updates?.installed?.name ?? '1.3.0',
                   applicationIcon: const BrandMark(size: 48),
                   children: [
                     const Text('居家安全事件提醒与家庭协作。AI 信息用于辅助核实；请结合实际情况处理。'),
@@ -476,8 +490,12 @@ class ContactsEditor extends StatefulWidget {
 
 class ContactsEditorState extends State<ContactsEditor> {
   late final TextEditingController _primary, _backup, _seconds;
+  late int? _delay;
   bool _busy = false;
   String? _message;
+  final _messageKey = GlobalKey();
+  static const _presets = {30: '30秒', 60: '1分钟', 180: '3分钟'};
+
   @override
   void initState() {
     super.initState();
@@ -485,6 +503,9 @@ class ContactsEditorState extends State<ContactsEditor> {
     _primary = TextEditingController(text: p.contactName('primary'));
     _backup = TextEditingController(text: p.contactName('backup'));
     _seconds = TextEditingController(text: '${p.escalationSeconds}');
+    _delay = _presets.containsKey(p.escalationSeconds)
+        ? p.escalationSeconds
+        : null;
   }
 
   @override
@@ -495,20 +516,33 @@ class ContactsEditorState extends State<ContactsEditor> {
     super.dispose();
   }
 
+  void _showMessage(String message) {
+    setState(() => _message = message);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _messageKey.currentContext;
+      if (mounted && target != null) {
+        unawaited(Scrollable.ensureVisible(target, alignment: .5));
+      }
+    });
+  }
+
   Future<void> _save() async {
-    final seconds = int.tryParse(_seconds.text);
+    if (_busy) return;
+    FocusScope.of(context).unfocus();
+    final seconds = _delay ?? int.tryParse(_seconds.text.trim());
     final a = _primary.text.trim(), b = _backup.text.trim();
-    if (a.isEmpty ||
-        b.isEmpty ||
-        a.length > 80 ||
-        b.length > 80 ||
-        seconds == null ||
-        seconds < 5 ||
-        seconds > 86400) {
-      setState(() => _message = '请填写 1–80 字姓名，升级等待为 5–86400 整数秒');
+    if (a.isEmpty || b.isEmpty || a.length > 80 || b.length > 80) {
+      _showMessage('联系人姓名请填写 1–80 个字');
       return;
     }
-    setState(() => _busy = true);
+    if (seconds == null || seconds < 5 || seconds > 86400) {
+      _showMessage('备用联系人提醒延迟需为 5–86400 整数秒');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
     try {
       await widget.controller.saveFamilyPreferences(
         FamilyPreferences(
@@ -523,7 +557,7 @@ class ContactsEditorState extends State<ContactsEditor> {
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) setState(() => _message = '$e');
+      if (mounted) _showMessage('$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -531,6 +565,7 @@ class ContactsEditorState extends State<ContactsEditor> {
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
+    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
     padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,30 +580,80 @@ class ContactsEditorState extends State<ContactsEditor> {
           style: TextStyle(fontSize: 12, color: Anju.muted),
         ),
         const SizedBox(height: 24),
-        TextField(
-          controller: _primary,
-          decoration: const InputDecoration(
-            labelText: '主要联系人姓名',
-            prefixIcon: Icon(Icons.person_outline),
+        const Text('主要联系人姓名'),
+        const SizedBox(height: 8),
+        Semantics(
+          label: '主要联系人姓名',
+          child: TextField(
+            key: const ValueKey('primary-contact-name'),
+            controller: _primary,
+            enabled: !_busy,
+            decoration: const InputDecoration(
+              hintText: '填写姓名',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _backup,
-          decoration: const InputDecoration(
-            labelText: '备用联系人姓名',
-            prefixIcon: Icon(Icons.people_outline),
+        const Text('备用联系人姓名'),
+        const SizedBox(height: 8),
+        Semantics(
+          label: '备用联系人姓名',
+          child: TextField(
+            key: const ValueKey('backup-contact-name'),
+            controller: _backup,
+            enabled: !_busy,
+            decoration: const InputDecoration(
+              hintText: '填写姓名',
+              prefixIcon: Icon(Icons.people_outline),
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _seconds,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: '未回应升级等待（秒）'),
+        const SizedBox(height: 20),
+        const Text('备用联系人提醒延迟'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final preset in _presets.entries)
+              ChoiceChip(
+                label: Text(preset.value),
+                selected: _delay == preset.key,
+                onSelected: _busy
+                    ? null
+                    : (_) => setState(() => _delay = preset.key),
+              ),
+            ChoiceChip(
+              label: const Text('自定义'),
+              selected: _delay == null,
+              onSelected: _busy ? null : (_) => setState(() => _delay = null),
+            ),
+          ],
         ),
+        if (_delay == null) ...[
+          const SizedBox(height: 12),
+          const Text('自定义延迟（秒）'),
+          const SizedBox(height: 8),
+          Semantics(
+            label: '自定义延迟（秒）',
+            child: TextField(
+              key: const ValueKey('contact-reminder-seconds'),
+              controller: _seconds,
+              enabled: !_busy,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                hintText: '5–86400',
+                helperText: '填写 5–86400 之间的整数秒',
+                helperMaxLines: 4,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
-        const InfoBanner('主要联系人未确认时，由服务端按设定时间向备用联系人发送升级提醒。真实送达依赖已注册的推送服务。'),
-        if (_message != null) InfoBanner(_message!, error: true),
+        const InfoBanner('重要提醒在这段时间内仍未被主要联系人确认时，提醒备用联系人。提醒送达依赖推送服务。'),
+        if (_message != null)
+          InfoBanner(_message!, key: _messageKey, error: true),
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
