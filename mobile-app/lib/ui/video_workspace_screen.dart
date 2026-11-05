@@ -517,7 +517,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
                     const SizedBox(height: 8),
                     Text(
                       _sent == _total && _total > 0
-                          ? '传输完成，正在准备视频…'
+                          ? '视频已传完，正在检查格式并准备入库；完成后才会出现在录像库…'
                           : '${(_sent / 1024 / 1024).toStringAsFixed(1)} / ${(_total / 1024 / 1024).toStringAsFixed(1)} MiB',
                     ),
                     TextButton(
@@ -545,7 +545,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
                 '后端分析暂未就绪：${(_health!['configuration_error'] as Map?)?['message'] ?? '请在电脑端配置模型服务后重试。'}',
               ),
             const SectionTitle('录像库'),
-            if (_videos.isEmpty && !_loading)
+            if (_videos.isEmpty && !_loading && _error == null)
               const Surface(
                 child: EmptyState(
                   title: '还没有录像',

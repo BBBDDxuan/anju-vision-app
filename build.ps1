@@ -1,0 +1,103 @@
+[CmdletBinding()]
+param(
+    [string]$ToolsRoot = '',
+    [ValidateSet('release', 'debug')][string]$Configuration = 'release',
+    [ValidateSet('android-arm', 'android-arm64', 'android-x64')]
+    [string[]]$TargetPlatform = @('android-arm64'),
+    [switch]$WithFirebase,
+    [string]$ExpectedSigningSha256 = '2472d43f63dbea0d2d3c34933114caf3dc532055c97ceaa40e96a968070b3e35'
+)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$mobileRoot = Join-Path $PSScriptRoot 'mobile-app'
+if (-not $ToolsRoot) {
+    $ToolsRoot = if ($env:ANJU_ANDROID_TOOLS_ROOT) { $env:ANJU_ANDROID_TOOLS_ROOT } else { 'D:\AndroidDev' }
+}
+$ToolsRoot = [IO.Path]::GetFullPath($ToolsRoot)
+$env:FLUTTER_ROOT = Join-Path $ToolsRoot 'flutter'
+$env:JAVA_HOME = Join-Path $ToolsRoot 'jdk'
+$env:ANDROID_HOME = Join-Path $ToolsRoot 'sdk'
+$env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+$env:PUB_CACHE = Join-Path $ToolsRoot 'cache\pub'
+$env:GRADLE_USER_HOME = Join-Path $ToolsRoot 'cache\gradle'
+$env:ANDROID_USER_HOME = Join-Path $ToolsRoot 'android-home'
+$env:TEMP = Join-Path $ToolsRoot 'tmp'
+$env:TMP = $env:TEMP
+$env:FLUTTER_SUPPRESS_ANALYTICS = 'true'
+$env:DART_SUPPRESS_ANALYTICS = 'true'
+$env:CI = 'true'
+$env:ELDER_SAFETY_BUILD_ROOT = $mobileRoot
+$env:PATH = "$env:FLUTTER_ROOT\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:PATH"
+$flutter = Join-Path $env:FLUTTER_ROOT 'bin\flutter.bat'
+foreach ($required in @($flutter, (Join-Path $env:JAVA_HOME 'bin\java.exe'), $env:ANDROID_HOME)) {
+    if (-not (Test-Path -LiteralPath $required)) { throw "Required tool not found: $required" }
+}
+foreach ($directory in @($env:PUB_CACHE, $env:GRADLE_USER_HOME, $env:ANDROID_USER_HOME, $env:TEMP)) {
+    [void][IO.Directory]::CreateDirectory($directory)
+}
+if ($Configuration -eq 'release' -and -not (Test-Path -LiteralPath (Join-Path $mobileRoot 'android\key.properties'))) {
+    throw 'Original private signing configuration is required at mobile-app/android/key.properties.'
+}
+if ($Configuration -eq 'release' -and $ExpectedSigningSha256 -notmatch '^[0-9a-fA-F]{64}$') {
+    throw 'Expected original signing certificate SHA-256 is invalid.'
+}
+$signer = Get-ChildItem -LiteralPath (Join-Path $env:ANDROID_HOME 'build-tools') -Filter apksigner.bat -Recurse -File |
+    Sort-Object FullName -Descending | Select-Object -First 1
+if (-not $signer) { throw 'Android apksigner was not found.' }
+$priorFirebase = $env:ORG_GRADLE_PROJECT_enableFirebase
+Push-Location -LiteralPath $mobileRoot
+try {
+    if ($WithFirebase) {
+        $configPath = Join-Path $mobileRoot 'android\app\google-services.json'
+        if (-not (Test-Path -LiteralPath $configPath)) { throw 'Firebase client configuration is missing.' }
+        $clientConfig = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+        $expectedPackage = 'com.eldersafety.elder_safety_mobile'
+        if ($Configuration -eq 'debug') { $expectedPackage += '.test' }
+        $configuredPackages = @($clientConfig.client | ForEach-Object { $_.client_info.android_client_info.package_name })
+        if ($expectedPackage -notin $configuredPackages) { throw 'Firebase package does not match this build.' }
+    }
+    $env:ORG_GRADLE_PROJECT_enableFirebase = ([bool]$WithFirebase).ToString().ToLowerInvariant()
+    & $flutter pub get --enforce-lockfile
+    if ($LASTEXITCODE -ne 0) { throw 'Locked dependency restore failed.' }
+    & (Join-Path $mobileRoot 'tool\verify.ps1') -FlutterPath $flutter
+    & node (Join-Path $mobileRoot 'tool\check-c-config.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'Notification configuration check failed.' }
+    $firebase = ([bool]$WithFirebase).ToString().ToLowerInvariant()
+    $platforms = $TargetPlatform -join ','
+    & $flutter build apk "--$Configuration" --no-pub --split-per-abi "--target-platform=$platforms" "--dart-define=USE_FIREBASE=$firebase"
+    if ($LASTEXITCODE -ne 0) { throw 'Android APK build failed.' }
+    $abis = @{ 'android-arm' = 'armeabi-v7a'; 'android-arm64' = 'arm64-v8a'; 'android-x64' = 'x86_64' }
+    $artifacts = @()
+    foreach ($platform in $TargetPlatform) {
+        $name = "app-$($abis[$platform])-$Configuration.apk"
+        $apk = Join-Path $mobileRoot "build\app\outputs\flutter-apk\$name"
+        if (-not (Test-Path -LiteralPath $apk)) { throw "Missing expected build output: $name" }
+        $signature = & $signer.FullName verify --verbose --print-certs $apk 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "APK signature verification failed: $name" }
+        $certificateMatch = [regex]::Match(($signature -join [Environment]::NewLine), 'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]{64})')
+        if (-not $certificateMatch.Success) { throw 'Signing certificate fingerprint is missing.' }
+        $certificate = $certificateMatch.Groups[1].Value.ToLowerInvariant()
+        if ($Configuration -eq 'release' -and $certificate -ne $ExpectedSigningSha256.ToLowerInvariant()) {
+            throw 'Signing certificate differs from the original app; upgrade must not be delivered.'
+        }
+        $artifacts += @{
+            file = $name; abi = $abis[$platform]; bytes = (Get-Item -LiteralPath $apk).Length
+            sha256 = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
+            certificate_sha256 = $certificate; original_signer_verified = ($Configuration -eq 'release')
+        }
+        Write-Host "Verified APK: $apk"
+    }
+    $sourceCommit = (& git -C $PSScriptRoot rev-parse HEAD | Select-Object -Last 1)
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot record source revision.' }
+    $version = ((Select-String -LiteralPath 'pubspec.yaml' -Pattern '^version:').Line -replace '^version:\s*', '').Trim()
+    $report = @{
+        source_commit = $sourceCommit; source_branch = (& git -C $PSScriptRoot branch --show-current | Select-Object -Last 1)
+        contains_uncommitted_changes = [bool](& git -C $PSScriptRoot status --porcelain)
+        version = $version; configuration = $Configuration; firebase_enabled = [bool]$WithFirebase
+        real_phone_tested = $false; artifacts = $artifacts
+    }
+    $report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $mobileRoot 'build\BUILD-RESULTS.json') -Encoding utf8
+} finally {
+    Pop-Location
+    $env:ORG_GRADLE_PROJECT_enableFirebase = $priorFirebase
+}
