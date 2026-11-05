@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const baseline = '836ea9e91c2b58919accd820ddb95e2ca0ad7024';
 const gitExe = process.env.GIT_EXE || 'git';
-const git = (...args) => execFileSync(gitExe, ['-c', 'core.excludesFile=NUL', ...args], {cwd: root, encoding: 'utf8'});
+const git = (...args) => execFileSync(gitExe, ['-c', 'core.excludesFile=', ...args], {cwd: root, encoding: 'utf8'});
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const allowed = new Set([
   '.gitignore',
