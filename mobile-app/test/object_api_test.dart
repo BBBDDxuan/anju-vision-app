@@ -8,6 +8,73 @@ import 'package:elder_safety_mobile/services/api.dart';
 
 void main() {
   test(
+    'video validation errors retain code and never masquerade as host rejection',
+    () async {
+      for (final code in [
+        'INVALID_MP4',
+        'VIDEO_ROTATION',
+        'VIDEO_DURATION',
+        'VIDEO_RESOLUTION',
+        'VIDEO_STREAM',
+        'MEDIA_PROBE_FAILED',
+        'INVALID_METADATA',
+      ]) {
+        final api = ObjectApi(
+          const ObjectServiceConfig(),
+          client: MockClient(
+            (_) async => http.Response(
+              jsonEncode({
+                'error': {'code': code, 'message': 'untrusted-secret'},
+              }),
+              400,
+            ),
+          ),
+        );
+        addTearDown(api.close);
+        await expectLater(
+          api.postJson('/api/uploads/test/complete'),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.code, 'code', code)
+                .having(
+                  (e) => e.message,
+                  'message',
+                  allOf(
+                    contains(code),
+                    isNot(contains('白名单')),
+                    isNot(contains('untrusted-secret')),
+                  ),
+                ),
+          ),
+        );
+      }
+    },
+  );
+  test(
+    'only actual invalid host response reports a host allowlist failure',
+    () async {
+      for (final body in ['Invalid host header', '<html>Bad Request</html>']) {
+        final api = ObjectApi(
+          const ObjectServiceConfig(),
+          client: MockClient((_) async => http.Response(body, 400)),
+        );
+        addTearDown(api.close);
+        await expectLater(
+          api.recordings(),
+          throwsA(
+            isA<ApiException>().having(
+              (e) => e.message,
+              'message',
+              body == 'Invalid host header'
+                  ? contains('白名单')
+                  : isNot(contains('白名单')),
+            ),
+          ),
+        );
+      }
+    },
+  );
+  test(
     'original recording routes, evidence and explicit no-cloud query',
     () async {
       final calls = <http.Request>[];

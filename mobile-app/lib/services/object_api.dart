@@ -153,22 +153,38 @@ class ObjectApi {
           'NETWORK_DISABLED' ||
           'COST_NOT_CONFIRMED' ||
           'SAFETY_REVIEW_DISABLED' => '模型环境未就绪，请由后端负责人检查配置',
-          'VIDEO_INVALID' ||
-          'PROBE_FAILED' ||
-          'NO_VIDEO_STREAM' => '后端无法读取这个视频，请检查文件格式与媒体工具',
+          'INVALID_MP4' || 'VIDEO_INVALID' => '文件内容不是有效的 MP4，请重新导出为 MP4 后上传',
+          'VIDEO_ROTATION' => '此视频带有旋转信息，当前后端暂不支持；请在相册中编辑并重新导出后上传',
+          'VIDEO_DURATION' => '视频时长无效或超过后端上限，请缩短视频或检查后端时长配置',
+          'VIDEO_RESOLUTION' => '视频分辨率超出后端范围，请导出为 1080p 或更低分辨率后上传',
+          'VIDEO_STREAM' || 'NO_VIDEO_STREAM' => '视频轨道不符合要求，请导出为单视频轨道的 MP4 后上传',
+          'MEDIA_PROBE_FAILED' ||
+          'PROBE_FAILED' => '后端无法读取视频信息，请检查视频是否损坏及 FFprobe 配置',
+          'INVALID_METADATA' => '视频缺少有效的时长或尺寸信息，请重新导出 MP4 后上传',
+          'EMPTY_CHUNK' => '收到的视频片段为空，请重新选择手机本地视频后上传',
           _ => null,
         };
         throw ApiException(
-          known ??
-              switch (response.statusCode) {
-                400 => '录像服务拒绝了访问地址，请检查主机白名单与网关配置',
-                401 || 403 => '录像服务认证失败，请检查访问令牌',
-                404 => '录像或证据不存在',
-                409 => '该录像暂无可用结果，请在视频工作台完成分析',
-                429 => '服务请求额度不足，请稍后重试',
-                413 => '视频超过后端限制或存储空间不足',
-                _ => '录像服务请求失败（HTTP ${response.statusCode}）',
-              },
+          (known ??
+                  switch (response.statusCode) {
+                    400 =>
+                      utf8
+                                  .decode(
+                                    response.bodyBytes,
+                                    allowMalformed: true,
+                                  )
+                                  .trim() ==
+                              'Invalid host header'
+                          ? '录像服务拒绝了访问地址，请检查主机白名单与网关配置'
+                          : '录像服务未接受此请求，请检查视频要求与后端错误记录',
+                    401 || 403 => '录像服务认证失败，请检查访问令牌',
+                    404 => '录像或证据不存在',
+                    409 => '该录像暂无可用结果，请在视频工作台完成分析',
+                    429 => '服务请求额度不足，请稍后重试',
+                    413 => '视频超过后端限制或存储空间不足',
+                    _ => '录像服务请求失败（HTTP ${response.statusCode}）',
+                  }) +
+              (code == null ? '' : '（错误码：$code）'),
           statusCode: response.statusCode,
           code: code,
         );
