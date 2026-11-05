@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 产物：`mobile-app/build/app/outputs/flutter-apk/`。报告：`mobile-app/build/BUILD-RESULTS.json`。正式分架构包带 Android ABI 版本号偏移，本版 ARM64 实际版本号为 `6010`。
 
-本机 AOT 编译器已实际复现中文路径读取失败。构建入口会在检测到中文路径时调用既有 `tool/ascii-env.ps1`，选择两个未占用的盘符，为同一物理仓库和工具建立临时 ASCII 别名，构建结束自动移除。源码和产物仍在本仓库，不创建另一份源码；已占用盘符不会被覆盖。Kotlin 增量缓存在依赖缓存和源码位于不同盘符时也已复现失败，因此构建进程临时设置 `kotlin.incremental=false`，结束后恢复环境。代价是 Kotlin 重编译可能变慢。
+本机 AOT 编译器已实际复现中文路径读取失败。构建入口会在检测到中文路径时调用既有 `tool/ascii-env.ps1`，选择两个未占用的盘符，为同一物理仓库和工具建立临时 ASCII 别名，构建结束自动移除。源码和产物仍在本仓库，不创建另一份源码；已占用盘符不会被覆盖。Kotlin 增量缓存在依赖缓存和源码位于不同盘符时也已复现失败，因此在 App 的 `android/gradle.properties` 中设置 `kotlin.incremental=false`。代价是 Kotlin 重编译可能变慢。
 
 ## 结构与资料分层
 
