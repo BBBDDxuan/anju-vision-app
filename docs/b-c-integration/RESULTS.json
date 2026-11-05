@@ -1,0 +1,99 @@
+{
+  "configuration": "release",
+  "application_id": "com.eldersafety.elder_safety_mobile",
+  "limitations": [
+    "Firebase background/lock-screen delivery not enabled or phone-tested",
+    "Live physical camera and recognition accuracy not verified in this build task",
+    "Backend models must be configured and backend kept running separately",
+    "A FFmpeg9 legacy -vsync compatibility issue remains for some transcodes"
+  ],
+  "app_c_baseline": "778a2b7b07907d1bafcb4162264bb41e519bd294",
+  "verification": {
+    "emulator": {
+      "logcat_runtime_errors": "none observed",
+      "cold_scoped_native_intent": "opened uploaded source detail at 00:01",
+      "existing_test_members_preserved": 3,
+      "native_local_notification": "observed for synthetic new confirmed alert",
+      "cold_launch": "ok",
+      "adb_install_r": "Success",
+      "upgrade": "1.2.1 x86_64 versionCode 4006 -> 1.2.2 x86_64 versionCode 8007",
+      "foreign_scope": "did not open detail",
+      "restart": "no repeated active native alert",
+      "android_api": 35,
+      "unified_connection_and_two_sources": "passed",
+      "notification_panel_click": "opened correct live source detail"
+    },
+    "analyzer": {
+      "exit_code": 0,
+      "warnings": 0,
+      "firebase_deprecation_infos": 2,
+      "errors": 0
+    },
+    "flutter_unit_widget": {
+      "passed": 88,
+      "exit_code": 0,
+      "skipped": 4
+    },
+    "isolated_current_backend_http": {
+      "passed": 2,
+      "covers": [
+        "two-client sync, acknowledgement and resolution",
+        "protected evidence",
+        "chunk upload, object job and results"
+      ],
+      "fixture": "temporary synthetic data; real phone_app HTTP handlers; no paid model or camera"
+    },
+    "source_checks": [
+      "source_check passed",
+      "check-c-config passed",
+      "B/C boundary check passed",
+      "C notification/native RTSP and dependency lock unchanged"
+    ],
+    "after_manual_revision": {
+      "navigation_manual_tests_passed": 2
+    }
+  },
+  "created_at": "2026-11-04T16:45:54.6162824+08:00",
+  "firebase_enabled": false,
+  "integration_branch_pushed": false,
+  "version": "1.2.2+4007",
+  "integration_branch": "codex/b-c-integration-build",
+  "artifacts": [
+    {
+      "abi": "armeabi-v7a",
+      "file": "AnjuVision-v1.2.2-armeabi-v7a.apk",
+      "zipalign_16kb_passed": true,
+      "version_name": "1.2.2",
+      "original_certificate_verified": true,
+      "version_code": 5007,
+      "bytes": 59781945,
+      "sha256": "790b1c4213b2338703eb7a9913421adab4d0d26ce7526f68b1c3e1c85ea312eb"
+    },
+    {
+      "abi": "x86_64",
+      "file": "AnjuVision-v1.2.2-x86_64.apk",
+      "zipalign_16kb_passed": true,
+      "version_name": "1.2.2",
+      "original_certificate_verified": true,
+      "version_code": 8007,
+      "bytes": 79010614,
+      "sha256": "d731460f696abfb74b26193094d45044b78a25592dbdf52afb82cdfd895c186b"
+    },
+    {
+      "abi": "arm64-v8a",
+      "file": "AnjuVision-v1.2.2-arm64-v8a.apk",
+      "zipalign_16kb_passed": true,
+      "version_name": "1.2.2",
+      "original_certificate_verified": true,
+      "version_code": 6007,
+      "bytes": 69036747,
+      "sha256": "07eee2d07a437bc5806d385d4afda281881f2f3602008add4ead06b400199a25"
+    }
+  ],
+  "app_source_commit": "923b4fb53012bb1153670de3ea18f75baf4ddc01",
+  "target_sdk": 36,
+  "backend_c_checkout": "3fde57e33ffcfca5ca9c19bd27c7e0a8c4888719",
+  "real_phone_tested": false,
+  "certificate_sha256": "2472d43f63dbea0d2d3c34933114caf3dc532055c97ceaa40e96a968070b3e35",
+  "min_sdk": 24
+}

@@ -13,12 +13,12 @@ void main() {
       'VideoLAN LibVLC / FFmpeg native video',
     ], await rootBundle.loadString('assets/licenses/native-video.txt'));
   });
-  runApp(
-    ElderSafetyApp(
-      controller: SafetyController(
-        store: SecureSettingsStore(),
-        gateway: useFirebase ? FirebasePushGateway() : null,
-      ),
-    ),
+  late final SafetyController controller;
+  controller = SafetyController(
+    store: SecureSettingsStore(),
+    gateway: useFirebase
+        ? FirebasePushGateway(currentScope: () => controller.notificationScope)
+        : null,
   );
+  runApp(ElderSafetyApp(controller: controller));
 }

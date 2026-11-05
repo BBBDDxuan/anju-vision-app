@@ -8,6 +8,7 @@ import 'models/camera_connection.dart';
 import 'services/api.dart';
 import 'services/object_api.dart';
 import 'services/push_service.dart';
+import 'services/notifications/alert_gate.dart' as native_notices;
 import 'services/settings_store.dart';
 import 'ui/widgets.dart' show eventTypeLabel;
 
@@ -40,7 +41,13 @@ class SafetyController extends ChangeNotifier {
       store: store,
       gateway: gateway,
       onOpen: (id) {
-        if (!_disposed && !usesUnifiedBackend) openEvents.add(id);
+        if (_disposed) return;
+        if (usesUnifiedBackend) {
+          final scope = notificationScope;
+          if (scope != null) unawaited(openScopedAlert(scope, id));
+        } else {
+          openEvents.add(id);
+        }
       },
       onForeground: (id) {
         if (usesUnifiedBackend) {
@@ -72,6 +79,68 @@ class SafetyController extends ChangeNotifier {
   final alertOpens = StreamController<AlertLocation>.broadcast();
   final List<AlertLocation> _pendingAlertOpens = [];
   UnifiedAlertSynchronizer? _alertSync;
+  final _pendingScopedOpen = native_notices.PendingAlertOpen();
+  int _openRequest = 0;
+  String? get notificationScope {
+    if (_disposed || _repository == null || settings.bearerToken.isEmpty)
+      return null;
+    try {
+      return native_notices.notificationScope(settings.baseUrl);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool canPresentNotifications(String scope) =>
+      !_disposed &&
+      !configuring &&
+      _active &&
+      notificationScope == scope &&
+      _preferencesLoaded &&
+      preferences.notificationsEnabled;
+
+  /// Native/FCM clicks provide a scoped ID; fetch its real source before routing.
+  Future<void> openScopedAlert(String scope, String id) async {
+    if (_disposed ||
+        !native_notices.isNotificationScope(scope) ||
+        !native_notices.isUnifiedAlertId(id))
+      return;
+    _pendingScopedOpen.add(scope: scope, id: id);
+    await _consumeScopedOpen();
+  }
+
+  Future<void> _consumeScopedOpen() async {
+    final scope = notificationScope;
+    if (!initialized || configuring || scope == null || !usesUnifiedBackend)
+      return;
+    final id = _pendingScopedOpen.take(scope);
+    if (id == null) return;
+    final request = ++_openRequest, generation = _generation;
+    try {
+      final event = await loadEvent(id);
+      if (_disposed ||
+          request != _openRequest ||
+          generation != _generation ||
+          scope != notificationScope)
+        return;
+      final source = event.details['source'];
+      if (!['live_camera', 'uploaded_recording'].contains(source)) return;
+      openAlert(
+        AlertLocation(
+          backend: serviceScope,
+          household: 'default',
+          alertId: event.id,
+          source: source as String,
+        ),
+      );
+    } catch (_) {
+      if (!_disposed && generation == _generation) {
+        error = '通知对应的告警暂时无法读取，请检查连接后在消息中重试';
+        _notify();
+      }
+    }
+  }
+
   bool get usesUnifiedBackend =>
       !_explicitRepository || _repository is UnifiedAlertRepository;
   String get alertScope => '$serviceScope|default';
@@ -159,6 +228,7 @@ class SafetyController extends ChangeNotifier {
     } finally {
       initialized = true;
       _notify();
+      unawaited(_consumeScopedOpen());
     }
   }
 
@@ -179,12 +249,6 @@ class SafetyController extends ChangeNotifier {
   }
 
   Future<void> _configurePush() async {
-    if (usesUnifiedBackend) {
-      // C consumes alertSnapshots and owns notification dedup, registration and display.
-      pushStatus = '通知服务尚未接入；当前可在前台查看统一告警，后台送达未验证';
-      _notify();
-      return;
-    }
     if (_disposed) return;
     if (_repository == null) {
       pushStatus = '安全后端未启用；录像事件在 App 前台刷新提醒';
@@ -480,7 +544,7 @@ class SafetyController extends ChangeNotifier {
           ? _factory(next)
           : null;
       // A failed delete preserves the old configuration, preventing an orphan token.
-      if (_repository != null && !usesUnifiedBackend) await push.detach();
+      if (_repository != null) await push.detach();
       await store.save(next);
       _repository?.close();
       settings = next;
@@ -519,6 +583,7 @@ class SafetyController extends ChangeNotifier {
     }
     await refresh();
     await _configurePush();
+    await _consumeScopedOpen();
   }
 
   Future<void> saveFamilyPreferences(FamilyPreferences next) async {

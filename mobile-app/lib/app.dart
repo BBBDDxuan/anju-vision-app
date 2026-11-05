@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_controller.dart';
 import 'services/android_notices.dart';
+import 'services/app_notification_binding.dart';
 import 'ui/event_detail_screen.dart';
 
 import 'ui/home_screen.dart';
@@ -31,6 +32,8 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
   StreamSubscription<EventNotice>? _notices;
   StreamSubscription<String>? _opens;
   StreamSubscription<AlertLocation>? _alertOpens;
+  StreamSubscription<AlertSyncSnapshot>? _snapshots;
+  late final AppNotificationBinding _notificationBinding;
   int _tab = 0;
   String? _openId;
   final List<String> _pendingOpens = [];
@@ -47,6 +50,17 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     _active = lifecycle == null || lifecycle == AppLifecycleState.resumed;
     _nativeReady = _initializeNativeNotices();
+    _notificationBinding = AppNotificationBinding(
+      android: _android,
+      currentScope: () => widget.controller.notificationScope,
+      canPresent: (scope) =>
+          mounted &&
+          _active &&
+          widget.controller.canPresentNotifications(scope),
+    );
+    _snapshots = widget.controller.alertSnapshots.stream.listen((snapshot) {
+      unawaited(_forwardSnapshot(snapshot));
+    });
     _notices = widget.controller.notices.stream.listen((notice) {
       if (!mounted ||
           !_active ||
@@ -83,10 +97,45 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
 
   Future<void> _initializeNativeNotices() async {
     try {
-      await _android.initialize(_openNativeNotice);
+      await _android.initialize(
+        _openNativeNotice,
+        onOpenScoped: (scope, id) {
+          unawaited(widget.controller.openScopedAlert(scope, id));
+        },
+      );
     } catch (_) {
       // Native integration failure must not suppress the in-app warning.
       debugPrint('Android notification initialization failed');
+    }
+  }
+
+  Future<void> _forwardSnapshot(AlertSyncSnapshot snapshot) async {
+    await _nativeReady;
+    if (!mounted) return;
+    try {
+      final notices = await _notificationBinding.accept(snapshot);
+      if (!mounted || notices.isEmpty || !_active) return;
+      final notice = notices.last;
+      _messenger.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            notices.length == 1
+                ? '收到新的安全告警，请及时查看'
+                : '收到 ${notices.length} 条新的安全告警，请及时查看',
+          ),
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: '查看',
+            onPressed: () {
+              unawaited(
+                widget.controller.openScopedAlert(snapshot.scope, notice.id),
+              );
+            },
+          ),
+        ),
+      );
+    } catch (_) {
+      debugPrint('Unified notification synchronization unavailable');
     }
   }
 
@@ -331,7 +380,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
                   padding: const EdgeInsets.only(right: 20),
                   child: Center(
                     child: Pill(
-                      _tab == 3 ? 'v1.2.1' : '家庭守护',
+                      _tab == 3 ? 'v1.2.2' : '家庭守护',
                       icon: Icons.shield_outlined,
                     ),
                   ),
@@ -452,6 +501,8 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
     unawaited(_notices?.cancel());
     unawaited(_opens?.cancel());
     unawaited(_alertOpens?.cancel());
+    _notificationBinding.dispose();
+    unawaited(_snapshots?.cancel());
     unawaited(_android.dispose());
     widget.controller.dispose();
     super.dispose();
