@@ -1,0 +1,2923 @@
+diff --git a/mobile-app/lib/app.dart b/mobile-app/lib/app.dart
+--- a/mobile-app/lib/app.dart
++++ b/mobile-app/lib/app.dart
+@@ -1,4 +1,6 @@
+ import 'dart:async';
++import 'dart:convert';
++import 'models/unified_alert.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_localizations/flutter_localizations.dart';
+ import 'app_controller.dart';
+@@ -28,6 +30,7 @@
+   final _messenger = GlobalKey<ScaffoldMessengerState>();
+   StreamSubscription<EventNotice>? _notices;
+   StreamSubscription<String>? _opens;
++  StreamSubscription<AlertLocation>? _alertOpens;
+   int _tab = 0;
+   String? _openId;
+   final List<String> _pendingOpens = [];
+@@ -62,10 +65,14 @@
+       );
+     });
+     _opens = widget.controller.openEvents.stream.listen(_openEvent);
++    _alertOpens = widget.controller.alertOpens.stream.listen(
++      (_) => _consumeAlertOpens(),
++    );
+     WidgetsBinding.instance.addPostFrameCallback((_) async {
+       await widget.controller.initialize();
+       if (!mounted) return;
+       _ready = true;
++      _consumeAlertOpens();
+       if (_pendingOpens.isNotEmpty) {
+         final id = _pendingOpens.last;
+         _pendingOpens.clear();
+@@ -76,7 +83,7 @@
+ 
+   Future<void> _initializeNativeNotices() async {
+     try {
+-      await _android.initialize(_openEvent);
++      await _android.initialize(_openNativeNotice);
+     } catch (_) {
+       // Native integration failure must not suppress the in-app warning.
+       debugPrint('Android notification initialization failed');
+@@ -155,7 +162,80 @@
+     setState(() => _tab = value);
+   }
+ 
++  void _openNativeNotice(String payload) {
++    try {
++      final value = jsonDecode(payload);
++      if (value is Map) {
++        final location = AlertLocation.tryParse(
++          Map<String, dynamic>.from(value),
++        );
++        if (location != null) {
++          widget.controller.openAlert(location);
++          return;
++        }
++      }
++    } catch (_) {
++      /* Legacy payloads only belong to the legacy connection. */
++    }
++    if (!widget.controller.usesUnifiedBackend) _openEvent(payload);
++  }
++
++  void _consumeAlertOpens() {
++    if (!mounted || !_ready || _navigator.currentState == null) return;
++    final pending = widget.controller.takePendingAlertOpens();
++    if (pending.isEmpty) return;
++    final location = pending.last;
++    if (!widget.controller.locationMatches(location)) {
++      _messenger.currentState?.showSnackBar(
++        const SnackBar(content: Text('这条通知属于其他后端或家庭，请切换到原连接后查看')),
++      );
++      return;
++    }
++    _openUnifiedAlert(location);
++  }
++
++  void _openUnifiedAlert(AlertLocation location) {
++    if (!mounted || _openId == location.key) return;
++    if (_openId != null)
++      _navigator.currentState!.popUntil((route) => route.isFirst);
++    _openId = location.key;
++    unawaited(
++      _navigator.currentState!
++          .push<void>(
++            MaterialPageRoute(
++              settings: RouteSettings(
++                name: '/alerts/${Uri.encodeComponent(location.alertId)}',
++                arguments: location.toJson(),
++              ),
++              builder: (_) => EventDetailScreen(
++                controller: widget.controller,
++                eventId: location.alertId,
++                location: location,
++              ),
++            ),
++          )
++          .whenComplete(() {
++            if (_openId == location.key) _openId = null;
++          }),
++    );
++  }
++
+   void _openEvent(String id) {
++    if (widget.controller.usesUnifiedBackend) {
++      final event = widget.controller.events
++          .where((e) => e.id == id && e.isUnified)
++          .firstOrNull;
++      if (event != null)
++        widget.controller.openAlert(
++          AlertLocation(
++            backend: widget.controller.serviceScope,
++            household: 'default',
++            alertId: id,
++            source: event.details['source'] as String,
++          ),
++        );
++      return;
++    }
+     if (!mounted || _openId == id) return;
+     if (!_ready || _navigator.currentState == null) {
+       _pendingOpens.add(id);
+@@ -371,6 +451,7 @@
+     WidgetsBinding.instance.removeObserver(this);
+     unawaited(_notices?.cancel());
+     unawaited(_opens?.cancel());
++    unawaited(_alertOpens?.cancel());
+     unawaited(_android.dispose());
+     widget.controller.dispose();
+     super.dispose();
+diff --git a/mobile-app/lib/app_controller.dart b/mobile-app/lib/app_controller.dart
+--- a/mobile-app/lib/app_controller.dart
++++ b/mobile-app/lib/app_controller.dart
+@@ -2,6 +2,7 @@
+ import 'dart:io';
+ import 'package:flutter/foundation.dart';
+ import 'models/models.dart';
++import 'models/unified_alert.dart';
+ import 'models/household.dart';
+ import 'models/camera_connection.dart';
+ import 'services/api.dart';
+@@ -31,7 +32,7 @@
+        _explicitRepository = repositoryFactory != null,
+        _factory =
+            repositoryFactory ??
+-           ((settings) => HttpSafetyRepository(
++           ((settings) => UnifiedHttpSafetyRepository(
+              baseUrl: settings.baseUrl,
+              bearerToken: settings.bearerToken,
+            )) {
+@@ -39,9 +40,13 @@
+       store: store,
+       gateway: gateway,
+       onOpen: (id) {
+-        if (!_disposed) openEvents.add(id);
++        if (!_disposed && !usesUnifiedBackend) openEvents.add(id);
+       },
+       onForeground: (id) {
++        if (usesUnifiedBackend) {
++          if (!_disposed) unawaited(refresh());
++          return;
++        }
+         if (!_disposed &&
+             _active &&
+             preferences.notificationsEnabled &&
+@@ -63,6 +68,27 @@
+   late final PushCoordinator push;
+   final notices = StreamController<EventNotice>.broadcast();
+   final openEvents = StreamController<String>.broadcast();
++  final alertSnapshots = StreamController<AlertSyncSnapshot>.broadcast();
++  final alertOpens = StreamController<AlertLocation>.broadcast();
++  final List<AlertLocation> _pendingAlertOpens = [];
++  UnifiedAlertSynchronizer? _alertSync;
++  bool get usesUnifiedBackend =>
++      !_explicitRepository || _repository is UnifiedAlertRepository;
++  String get alertScope => '$serviceScope|default';
++  bool locationMatches(AlertLocation location) => location.scope == alertScope;
++  void openAlert(AlertLocation location) {
++    if (_disposed) return;
++    _pendingAlertOpens.add(location);
++    if (_pendingAlertOpens.length > 20) _pendingAlertOpens.removeAt(0);
++    alertOpens.add(location);
++  }
++
++  List<AlertLocation> takePendingAlertOpens() {
++    final result = List<AlertLocation>.of(_pendingAlertOpens);
++    _pendingAlertOpens.clear();
++    return result;
++  }
++
+   AppSettings settings = const AppSettings();
+   FamilyPreferences preferences = FamilyPreferences.defaults;
+   HouseholdData household = HouseholdData.initial();
+@@ -112,6 +138,7 @@
+       }
+       if (_disposed) return;
+       await _loadHousehold();
++      if (!_explicitRepository) await _migrateUnifiedConnection();
+       _resetVideoApi();
+       preferences = household.familyPreferences;
+       if (settings.validationError == null &&
+@@ -120,6 +147,7 @@
+       } else {
+         error = settings.validationError;
+       }
++      await _prepareAlertSync();
+       await Future.wait([
+         if (_repository != null) _loadPreferences(),
+         refresh(),
+@@ -151,6 +179,12 @@
+   }
+ 
+   Future<void> _configurePush() async {
++    if (usesUnifiedBackend) {
++      // C consumes alertSnapshots and owns notification dedup, registration and display.
++      pushStatus = '通知服务尚未接入；当前可在前台查看统一告警，后台送达未验证';
++      _notify();
++      return;
++    }
+     if (_disposed) return;
+     if (_repository == null) {
+       pushStatus = '安全后端未启用；录像事件在 App 前台刷新提醒';
+@@ -213,6 +247,7 @@
+   }
+ 
+   Future<void> refresh() async {
++    if (usesUnifiedBackend) return _refreshUnified();
+     if (_refreshing || configuring || _disposed) return;
+     _refreshing = true;
+     loading = true;
+@@ -274,6 +309,141 @@
+     }
+   }
+ 
++  Future<void> _migrateUnifiedConnection() async {
++    if (settings.connectionVersion < 2) {
++      final oldVideo = household.objects;
++      var url = oldVideo.baseUrl;
++      var token = oldVideo.token;
++      final videoUri = Uri.tryParse(url),
++          oldUri = Uri.tryParse(settings.baseUrl);
++      if (token.isEmpty &&
++          videoUri?.host == '127.0.0.1' &&
++          oldUri != null &&
++          oldUri.host != '127.0.0.1') {
++        url = oldUri
++            .replace(port: oldUri.port == 8010 ? 8000 : oldUri.port)
++            .toString();
++      }
++      settings = settings.copyWith(
++        baseUrl: url.replaceAll(RegExp(r'/+$'), ''),
++        bearerToken: token,
++        connectionVersion: 2,
++      );
++      storageWarning = '已迁移为单一后端地址，请在连接服务核对并填写统一访问令牌；旧 8010 用户令牌未自动复用。';
++      try {
++        await store.save(settings);
++      } catch (_) {
++        storageWarning = '统一连接迁移未保存，请重新保存连接设置。';
++      }
++    }
++    household = household.copyWith(
++      objects: ObjectServiceConfig(
++        baseUrl: settings.baseUrl,
++        token: settings.bearerToken,
++        useCloud: household.objects.useCloud,
++      ),
++    );
++  }
++
++  Future<void> _prepareAlertSync() async {
++    _alertSync = null;
++    final current = _repository;
++    if (current is! UnifiedAlertRepository) return;
++    if (household.objects.baseUrl != settings.baseUrl ||
++        household.objects.token != settings.bearerToken) {
++      household = household.copyWith(
++        objects: ObjectServiceConfig(
++          baseUrl: settings.baseUrl,
++          token: settings.bearerToken,
++          useCloud: household.objects.useCloud,
++        ),
++      );
++      _resetVideoApi();
++    }
++    final syncStore = store is AlertSyncStore ? store as AlertSyncStore : null;
++    final scope = '${current.backendUrl}|default';
++    final sync = UnifiedAlertSynchronizer(
++      current,
++      persist: syncStore == null
++          ? null
++          : (value) => syncStore.saveAlertSync(scope, value),
++    );
++    _alertSync = sync;
++    if (syncStore != null) {
++      try {
++        sync.restore(await syncStore.loadAlertSync(scope));
++      } catch (_) {
++        storageWarning = '告警缓存读取失败，将重新进行完整同步。';
++      }
++    }
++    if (sync != _alertSync || _disposed) return;
++    _setUnifiedEvents(sync.events);
++  }
++
++  void _setUnifiedEvents(List<SafetyEvent> updated) {
++    _liveEvents = updated.where((e) => !e.fromVideo).toList();
++    _videoEvents = updated.where((e) => e.fromVideo).toList();
++    _mergeEvents();
++  }
++
++  Future<void> _refreshUnified() async {
++    if (_refreshing || configuring || _disposed) return;
++    final current = _repository, sync = _alertSync;
++    if (current is! UnifiedAlertRepository || sync == null) {
++      error = '请在“我的 → 连接服务”填写统一后端地址和访问令牌';
++      _notify();
++      return;
++    }
++    _refreshing = true;
++    loading = true;
++    _notify();
++    final generation = _generation;
++    bool valid() =>
++        !_disposed && generation == _generation && sync == _alertSync;
++    try {
++      await Future.wait([
++        (() async {
++          try {
++            final result = await sync.synchronize();
++            if (!valid()) return;
++            _setUnifiedEvents(sync.events);
++            error = null;
++            lastSync = DateTime.now();
++            alertSnapshots.add(
++              AlertSyncSnapshot(
++                backend: serviceScope,
++                household: 'default',
++                cursor: result.cursor,
++                initial: result.initial,
++                events: List.unmodifiable(events.where((e) => e.isUnified)),
++                changed: result.changed,
++                active: _active,
++                notificationsEnabled:
++                    _preferencesLoaded && preferences.notificationsEnabled,
++              ),
++            );
++          } catch (e) {
++            if (valid()) error = '$e';
++          }
++        })(),
++        (() async {
++          try {
++            final updated = await current.devices();
++            if (valid()) devices = updated;
++          } catch (_) {
++            /* Device heartbeat failures cannot erase authoritative alerts. */
++          }
++        })(),
++      ]);
++    } finally {
++      if (valid()) {
++        _refreshing = false;
++        loading = false;
++        _notify();
++      }
++    }
++  }
++
+   void _startPolling() {
+     _timer?.cancel();
+     if (_active && !_disposed) {
+@@ -310,15 +480,27 @@
+           ? _factory(next)
+           : null;
+       // A failed delete preserves the old configuration, preventing an orphan token.
+-      if (_repository != null) await push.detach();
++      if (_repository != null && !usesUnifiedBackend) await push.detach();
+       await store.save(next);
+       _repository?.close();
+       settings = next;
++      if (!_explicitRepository || candidate is UnifiedAlertRepository) {
++        household = household.copyWith(
++          objects: ObjectServiceConfig(
++            baseUrl: next.baseUrl,
++            token: next.bearerToken,
++            useCloud: household.objects.useCloud,
++          ),
++        );
++        _resetVideoApi();
++      }
+       _repository = candidate;
+       committed = true;
+       storageWarning = null;
+       devices = [];
+       _liveEvents = [];
++      if (usesUnifiedBackend) _videoEvents = [];
++      await _prepareAlertSync();
+       _baselines.remove('live');
+       _mergeEvents();
+       lastSync = null;
+@@ -364,6 +546,11 @@
+   }
+ 
+   Future<void> retryPush() async {
++    if (usesUnifiedBackend) {
++      await _loadPreferences();
++      await _configurePush();
++      return;
++    }
+     await _loadPreferences();
+     if (!_preferencesLoaded) throw ApiException(preferencesError!);
+     await push.configure(
+@@ -376,7 +563,9 @@
+ 
+   String get serviceScope => settings.baseUrl.replaceAll(RegExp(r'/+$'), '');
+   bool isLocalEvent(String id) => household.localEvents.any((e) => e.id == id);
+-  String eventScope(SafetyEvent event) => isLocalEvent(event.id)
++  String eventScope(SafetyEvent event) => event.isUnified
++      ? serviceScope
++      : isLocalEvent(event.id)
+       ? 'phone-local'
+       : event.fromVideo
+       ? event.details['source_url'].toString()
+@@ -529,6 +718,20 @@
+   List<SafetyEvent> recordsForMember(String id) =>
+       events.where((e) => isPersonEvent(e) && memberIdFor(e) == id).toList();
+   Future<SafetyEvent> loadEvent(String id) async {
++    if (usesUnifiedBackend) {
++      final generation = _generation, sync = _alertSync;
++      final current = repository;
++      if (current is! UnifiedAlertRepository || sync == null)
++        throw const ApiException('统一告警服务尚未连接');
++      final loaded = await current.event(id);
++      if (_disposed || generation != _generation || sync != _alertSync)
++        throw const ApiException('连接已切换，请重新打开告警');
++      final event = await sync.accept(loaded);
++      if (_disposed || generation != _generation || sync != _alertSync)
++        throw const ApiException('连接已切换，请重新打开告警');
++      _setUnifiedEvents(sync.events);
++      return event;
++    }
+     final local = household.localEvents.where((e) => e.id == id).firstOrNull;
+     if (local != null) return local;
+     if (id.startsWith('video:')) {
+@@ -555,6 +758,12 @@
+   }
+ 
+   Future<Uint8List> evidenceFor(SafetyEvent event) async {
++    if (event.isUnified) {
++      final current = repository;
++      if (current is! UnifiedAlertRepository || event.evidenceId == null)
++        throw const ApiException('截图暂未关联，可稍后刷新');
++      return current.mediaImage(event.evidenceId!);
++    }
+     if (isLocalEvent(event.id)) {
+       final path = event.details['image_path']?.toString() ?? '';
+       if (path.isEmpty) throw const ApiException('本机观察记录没有图片');
+@@ -575,6 +784,10 @@
+   }
+ 
+   Future<void> acknowledgeEvent(String id) async {
++    if (usesUnifiedBackend) {
++      await _handleUnified(id, false);
++      return;
++    }
+     if (id.startsWith('video:')) {
+       final api = _videoApi;
+       final generation = _generation;
+@@ -610,6 +823,10 @@
+   }
+ 
+   Future<void> resolveEvent(String id) async {
++    if (usesUnifiedBackend) {
++      await _handleUnified(id, true);
++      return;
++    }
+     if (id.startsWith('video:'))
+       throw const ApiException('录像告警支持确认，请在网页管理分析结果');
+     if (!isLocalEvent(id)) {
+@@ -632,6 +849,20 @@
+     );
+   }
+ 
++  Future<void> _handleUnified(String id, bool resolve) async {
++    final generation = _generation, sync = _alertSync;
++    final current = repository;
++    if (current is! UnifiedAlertRepository || sync == null)
++      throw const ApiException('统一后端未连接');
++    final event = await current.handleAlert(id, resolve: resolve);
++    if (_disposed || generation != _generation || sync != _alertSync)
++      throw const ApiException('连接已切换，请回原服务核对处理状态');
++    await sync.accept(event);
++    if (_disposed || generation != _generation || sync != _alertSync) return;
++    _setUnifiedEvents(sync.events);
++    _notify();
++  }
++
+   Future<void> addLocalEvent(SafetyEvent event, {String? memberId}) =>
+       _updateHousehold(
+         (data) => data.copyWith(
+@@ -645,6 +876,27 @@
+     ObjectServiceConfig config, {
+     bool refreshNow = true,
+   }) async {
++    if (usesUnifiedBackend) {
++      final next = settings.copyWith(
++        baseUrl: config.baseUrl,
++        bearerToken: config.token,
++        connectionVersion: 2,
++      );
++      if (next.baseUrl != settings.baseUrl ||
++          next.bearerToken != settings.bearerToken)
++        await applyConnection(next);
++      await _updateHousehold(
++        (data) => data.copyWith(
++          objects: ObjectServiceConfig(
++            baseUrl: settings.baseUrl,
++            token: settings.bearerToken,
++            useCloud: config.useCloud,
++          ),
++        ),
++      );
++      if (refreshNow) await refresh();
++      return;
++    }
+     final check = AppSettings(
+       baseUrl: config.baseUrl,
+       bearerToken: config.token,
+@@ -712,6 +964,8 @@
+     );
+     unawaited(notices.close());
+     unawaited(openEvents.close());
++    unawaited(alertSnapshots.close());
++    unawaited(alertOpens.close());
+     super.dispose();
+   }
+ }
+diff --git a/mobile-app/lib/models/models.dart b/mobile-app/lib/models/models.dart
+--- a/mobile-app/lib/models/models.dart
++++ b/mobile-app/lib/models/models.dart
+@@ -77,6 +77,10 @@
+   final Map<String, dynamic> details;
+ 
+   bool get fromVideo => details['source'] == 'uploaded_recording';
++  bool get isUnified => details['unified_alert'] == true;
++  int get revision => (details['revision'] as num?)?.toInt() ?? 0;
++  bool get withdrawn => reviewStatus == 'withdrawn';
++  bool get confirmedDanger => reviewStatus == 'confirmed' && !withdrawn;
+   bool get acknowledged =>
+       acknowledgementStatus == 'acknowledged' ||
+       acknowledgementStatus == 'acked';
+diff --git a/mobile-app/lib/models/unified_alert.dart b/mobile-app/lib/models/unified_alert.dart
+new file mode 100644
+--- /dev/null
++++ b/mobile-app/lib/models/unified_alert.dart
+@@ -0,0 +1,120 @@
++import 'models.dart';
++
++/// Stable navigation identity shared with C; never contains credentials.
++class AlertLocation {
++  const AlertLocation({
++    required this.backend,
++    required this.household,
++    required this.alertId,
++    required this.source,
++  });
++  final String backend, household, alertId, source;
++  String get scope => '${backend.replaceAll(RegExp(r'/+$'), '')}|$household';
++  String get key => '$scope|$source|$alertId';
++  Map<String, dynamic> toJson() => {
++    'backend': backend,
++    'household': household,
++    'alert_id': alertId,
++    'source': source,
++  };
++  static AlertLocation? tryParse(Map<String, dynamic> value) {
++    final backend = value['backend'];
++    final family = value['household'];
++    final id = value['alert_id'];
++    final source = value['source'];
++    if ([backend, family, id, source].any(
++      (v) =>
++          v is! String ||
++          v.isEmpty ||
++          v.length > 2048 ||
++          RegExp(r'[\x00-\x20\x7f]').hasMatch(v),
++    ))
++      return null;
++    final uri = Uri.tryParse(backend as String);
++    if (uri == null ||
++        !['http', 'https'].contains(uri.scheme) ||
++        uri.host.isEmpty ||
++        uri.userInfo.isNotEmpty ||
++        uri.hasQuery ||
++        uri.hasFragment ||
++        !['', '/'].contains(uri.path))
++      return null;
++    if (!['live_camera', 'uploaded_recording'].contains(source)) return null;
++    return AlertLocation(
++      backend: backend.replaceAll(RegExp(r'/+$'), ''),
++      household: family as String,
++      alertId: id as String,
++      source: source as String,
++    );
++  }
++}
++
++/// Only emitted after a complete, successful business synchronization.
++/// C owns notification deduplication and presentation, not another poller.
++class AlertSyncSnapshot {
++  const AlertSyncSnapshot({
++    required this.backend,
++    required this.household,
++    required this.cursor,
++    required this.initial,
++    required this.events,
++    required this.changed,
++    required this.active,
++    required this.notificationsEnabled,
++  });
++  final String backend, household;
++  final int cursor;
++  final bool initial, active, notificationsEnabled;
++  final List<SafetyEvent> events, changed;
++  bool get complete => true;
++  String get scope => '$backend|$household';
++  AlertLocation locationFor(SafetyEvent event) => AlertLocation(
++    backend: backend,
++    household: household,
++    alertId: event.id,
++    source: event.details['source'] as String,
++  );
++}
++
++SafetyEvent unifiedAlertFromJson(Map<String, dynamic> json) {
++  final id = json['id'];
++  final source = json['source'];
++  final revision = json['revision'];
++  if (id is! String ||
++      id.isEmpty ||
++      !['live_camera', 'uploaded_recording'].contains(source) ||
++      revision is! int ||
++      revision < 1)
++    throw const FormatException('Invalid unified alert identity');
++  final evidence = (json['evidence'] as List? ?? [])
++      .map((raw) => Map<String, dynamic>.from(raw as Map))
++      .toList();
++  final handling = field(json, 'handling_status', 'unknown');
++  return SafetyEvent(
++    id: id,
++    deviceId: source == 'live_camera'
++        ? field(json, 'camera_id')
++        : 'video:${field(json, 'video_id')}',
++    eventType: field(json, 'event_type', 'unknown'),
++    severity: field(json, 'severity', 'unknown'),
++    confidence: (json['confidence'] as num?)?.toDouble(),
++    occurredAt: dateField(json, 'occurred_at'),
++    createdAt: dateField(json, 'created_at'),
++    evidenceId: evidence.isEmpty ? null : evidence.first['url']?.toString(),
++    reviewStatus: field(json, 'review_status', 'unknown'),
++    reviewSummary: field(json, 'review_reason'),
++    notificationStatus: field(json, 'notification_status', 'unknown'),
++    acknowledgementStatus: ['acknowledged', 'resolved'].contains(handling)
++        ? 'acknowledged'
++        : 'unacknowledged',
++    state: handling,
++    trackId: json['track_id']?.toString(),
++    details: {
++      ...json,
++      'unified_alert': true,
++      'evidence': evidence,
++      'start_ms': json['video_offset_ms'],
++      'end_ms': json['video_end_ms'],
++    },
++  );
++}
+diff --git a/mobile-app/lib/services/api.dart b/mobile-app/lib/services/api.dart
+--- a/mobile-app/lib/services/api.dart
++++ b/mobile-app/lib/services/api.dart
+@@ -3,13 +3,325 @@
+ import 'dart:typed_data';
+ import 'package:http/http.dart' as http;
+ import '../models/models.dart';
++import '../models/unified_alert.dart';
+ 
+ class ApiException implements Exception {
+-  const ApiException(this.message, {this.statusCode});
++  const ApiException(this.message, {this.statusCode, this.code});
+   final String message;
+   final int? statusCode;
++  final String? code;
+   @override
+   String toString() => message;
++}
++
++abstract interface class UnifiedAlertRepository implements SafetyRepository {
++  String get backendUrl;
++  Future<Map<String, dynamic>> connection();
++  Future<Map<String, dynamic>> alertPage({int offset = 0, int limit = 100});
++  Future<Map<String, dynamic>> alertChanges(int after, {int limit = 100});
++  Future<SafetyEvent> handleAlert(String id, {required bool resolve});
++  Uri mediaUri(String path);
++  Future<Uint8List> mediaImage(String path);
++}
++
++/// A's single-origin 2026-11-04.v1 contract; legacy device/preferences APIs
++/// are compatibility routes at this same origin, never a second phone setting.
++class UnifiedHttpSafetyRepository extends HttpSafetyRepository
++    implements UnifiedAlertRepository {
++  UnifiedHttpSafetyRepository({
++    required super.baseUrl,
++    required super.bearerToken,
++    super.client,
++    super.timeout,
++  });
++  @override
++  String get backendUrl => baseUrl;
++  Future<Map<String, dynamic>> _getObject(String path) async =>
++      _object(_json(await _request('GET', path)));
++  @override
++  Future<Map<String, dynamic>> connection() async {
++    final result = await _getObject('/api/connection');
++    if (result['contract_version'] != '2026-11-04.v1' ||
++        result['household'] != 'default') {
++      throw const ApiException('后端统一接口契约不匹配，请使用 A 的 start-phone 启动入口');
++    }
++    return result;
++  }
++
++  @override
++  Future<bool> health() async {
++    await connection();
++    return true;
++  }
++
++  @override
++  Future<Map<String, dynamic>> alertPage({int offset = 0, int limit = 100}) =>
++      _getObject('/api/alerts?limit=$limit&offset=$offset');
++  @override
++  Future<Map<String, dynamic>> alertChanges(int after, {int limit = 100}) =>
++      _getObject('/api/alerts/changes?after=$after&limit=$limit');
++  SafetyEvent _alert(Map<String, dynamic> data) {
++    try {
++      return unifiedAlertFromJson(data);
++    } on FormatException {
++      throw const ApiException('统一告警格式无效，未应用本次同步');
++    } on TypeError {
++      throw const ApiException('统一告警字段类型无效，未应用本次同步');
++    }
++  }
++
++  @override
++  Future<SafetyEvent> event(String id) async =>
++      _alert(await _getObject('/api/alerts/${Uri.encodeComponent(id)}'));
++  @override
++  Future<List<SafetyEvent>> events() async => (await alertPage())['alerts']
++      .cast<Map>()
++      .map((v) => _alert(Map<String, dynamic>.from(v)))
++      .toList()
++      .cast<SafetyEvent>();
++  @override
++  Future<SafetyEvent> handleAlert(
++    String id, {
++    required bool resolve,
++  }) async => _alert(
++    _object(
++      _json(
++        await _request(
++          'POST',
++          '/api/alerts/${Uri.encodeComponent(id)}/${resolve ? 'resolve' : 'ack'}',
++        ),
++      ),
++    ),
++  );
++  @override
++  Future<void> acknowledge(String id) async {
++    await handleAlert(id, resolve: false);
++  }
++
++  @override
++  Future<void> resolve(String id) async {
++    await handleAlert(id, resolve: true);
++  }
++
++  @override
++  Uri mediaUri(String path) {
++    final root = Uri.parse(baseUrl);
++    final uri = root.resolve(path);
++    if (!['http', 'https'].contains(uri.scheme) ||
++        uri.origin != root.origin ||
++        uri.userInfo.isNotEmpty ||
++        uri.hasFragment) {
++      throw const ApiException('证据或播放地址必须属于当前统一后端');
++    }
++    return uri;
++  }
++
++  @override
++  Future<Uint8List> mediaImage(String path) async {
++    final uri = mediaUri(path);
++    final response = await _request(
++      'GET',
++      '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}',
++      image: true,
++    );
++    if (!(response.headers['content-type'] ?? '').toLowerCase().startsWith(
++          'image/',
++        ) ||
++        response.bodyBytes.length > 16 * 1024 * 1024) {
++      throw const ApiException('证据响应不是有效大小的图片');
++    }
++    return response.bodyBytes;
++  }
++
++  @override
++  Future<Uint8List> evidence(String id) => mediaImage(id);
++}
++
++class AlertSyncResult {
++  const AlertSyncResult(this.events, this.changed, this.cursor, this.initial);
++  final List<SafetyEvent> events, changed;
++  final int cursor;
++  final bool initial;
++}
++
++/// Transactional list + cursor synchronization. No UI or notification logic.
++class UnifiedAlertSynchronizer {
++  UnifiedAlertSynchronizer(this.repository, {this.persist});
++  final UnifiedAlertRepository repository;
++  final Future<void> Function(Map<String, dynamic>)? persist;
++  Map<String, SafetyEvent> _items = {};
++  int _cursor = 0;
++  bool _initialized = false, _published = false;
++  int _acceptedSequence = 0;
++  final Map<String, int> _acceptedAt = {};
++  List<SafetyEvent> get events => List.unmodifiable(_items.values);
++  int get cursor => _cursor;
++  String get scope => '${repository.backendUrl}|default';
++
++  void restore(Map<String, dynamic>? cache) {
++    if (cache == null ||
++        cache['scope'] != scope ||
++        cache['contract_version'] != '2026-11-04.v1')
++      return;
++    try {
++      final cursor = cache['cursor'];
++      if (cursor is! int || cursor < 0 || cache['events'] is! List) return;
++      final restored = <String, SafetyEvent>{};
++      for (final raw in cache['events'] as List) {
++        final event = SafetyEvent.fromJson(
++          Map<String, dynamic>.from(raw as Map),
++        );
++        if (!event.isUnified || event.revision < 1) return;
++        restored[event.id] = event;
++      }
++      _items = restored;
++      _cursor = cursor;
++      _initialized = true;
++    } catch (_) {
++      /* Corrupt local cache cannot establish a baseline. */
++    }
++  }
++
++  Map<String, dynamic> _cache(Map<String, SafetyEvent> items, int cursor) => {
++    'contract_version': '2026-11-04.v1',
++    'scope': scope,
++    'cursor': cursor,
++    'events': items.values.map((e) => e.toJson()).toList(),
++  };
++  void _merge(Map<String, SafetyEvent> target, Iterable<SafetyEvent> events) {
++    for (final event in events) {
++      if (target[event.id] == null ||
++          event.revision > target[event.id]!.revision)
++        target[event.id] = event;
++    }
++  }
++
++  List<SafetyEvent> _events(Map<String, dynamic> data) {
++    try {
++      return (data['alerts'] as List)
++          .map(
++            (raw) =>
++                unifiedAlertFromJson(Map<String, dynamic>.from(raw as Map)),
++          )
++          .toList();
++    } catch (_) {
++      throw const ApiException('统一告警分页格式无效，游标未前移');
++    }
++  }
++
++  int _integer(Map<String, dynamic> data, String key) {
++    final n = data[key];
++    if (n is! int || n < 0) throw const ApiException('统一告警游标无效');
++    return n;
++  }
++
++  Future<AlertSyncResult> synchronize() async {
++    var acceptedBeforeStart = _acceptedSequence;
++    await repository.connection();
++    var bootstrap = !_initialized;
++    var next = bootstrap
++        ? <String, SafetyEvent>{}
++        : Map<String, SafetyEvent>.from(_items);
++    var cursor = _cursor;
++    final changes = <SafetyEvent>[];
++    for (var reset = 0; reset < 2; reset++) {
++      if (bootstrap) {
++        next = {};
++        changes.clear();
++        var offset = 0;
++        var first = true;
++        while (true) {
++          final page = await repository.alertPage(offset: offset);
++          final loaded = _events(page);
++          if (first) {
++            cursor = _integer(page, 'snapshot_cursor');
++            first = false;
++          }
++          if (_integer(page, 'offset') != offset || page['has_more'] is! bool)
++            throw const ApiException('告警分页不连续，未应用部分列表');
++          _merge(next, loaded);
++          if (page['has_more'] == false) break;
++          if (loaded.isEmpty || offset > 1000000)
++            throw const ApiException('告警分页未取得进展');
++          offset += loaded.length;
++        }
++      }
++      var rebuilt = false;
++      for (var pageNumber = 0; ; pageNumber++) {
++        Map<String, dynamic> page;
++        try {
++          page = await repository.alertChanges(cursor);
++        } on ApiException catch (error) {
++          if (!bootstrap && [409, 410, 422].contains(error.statusCode)) {
++            rebuilt = true;
++            break;
++          }
++          rethrow;
++        }
++        final server = _integer(page, 'server_cursor');
++        if (server < cursor) {
++          rebuilt = true;
++          break;
++        }
++        final loaded = _events(page);
++        final after = _integer(page, 'next_cursor');
++        if (after < cursor ||
++            after > server ||
++            page['has_more'] is! bool ||
++            (loaded.isNotEmpty && after <= cursor))
++          throw const ApiException('告警增量游标不连续');
++        _merge(next, loaded);
++        changes.addAll(loaded);
++        if (page['has_more'] == false) {
++          cursor = after;
++          break;
++        }
++        if (after <= cursor || pageNumber > 10000)
++          throw const ApiException('告警增量分页未取得进展');
++        cursor = after;
++      }
++      if (!rebuilt) {
++        // Preserve ack/resolve responses received while this request was in flight.
++        if (!bootstrap) _merge(next, _items.values);
++        _merge(
++          next,
++          _items.values.where(
++            (e) => (_acceptedAt[e.id] ?? 0) > acceptedBeforeStart,
++          ),
++        );
++        if (persist != null) await persist!(_cache(next, cursor));
++        if (!bootstrap) _merge(next, _items.values);
++        _merge(
++          next,
++          _items.values.where(
++            (e) => (_acceptedAt[e.id] ?? 0) > acceptedBeforeStart,
++          ),
++        );
++        _items = next;
++        _cursor = cursor;
++        _initialized = true;
++        final initial = bootstrap || !_published;
++        _published = true;
++        return AlertSyncResult(
++          events,
++          List.unmodifiable(changes),
++          cursor,
++          initial,
++        );
++      }
++      bootstrap = true;
++      acceptedBeforeStart = _acceptedSequence;
++    }
++    throw const ApiException('告警中心在同步期间重建，请稍后刷新');
++  }
++
++  Future<SafetyEvent> accept(SafetyEvent event) async {
++    _merge(_items, [event]);
++    _acceptedAt[event.id] = ++_acceptedSequence;
++    if (persist != null && _initialized)
++      await persist!(_cache(_items, _cursor));
++    return _items[event.id]!;
++  }
+ }
+ 
+ abstract interface class SafetyRepository {
+@@ -61,12 +373,15 @@
+       ))().timeout(timeout);
+       if (response.statusCode < 200 || response.statusCode >= 300) {
+         final message = switch (response.statusCode) {
++          400 => '后端拒绝了访问地址，请检查主机白名单',
+           401 => '认证失败，请在设置中检查用户 token',
+           403 => '该用户无权访问此资源',
+           404 => '资源不存在或已被删除',
+           409 => '事件状态已变化，请刷新后重试',
+           410 => '证据已过期，无法读取截图',
+           422 => '字段不符合后端要求，请检查输入范围',
++          429 => '服务请求额度不足，请稍后重试',
++          503 => '后端服务或模型环境未就绪，请查看电脑端配置',
+           _ => '后端请求失败（HTTP ${response.statusCode}）',
+         };
+         // Do not echo a response body which might contain credentials.
+diff --git a/mobile-app/lib/services/object_api.dart b/mobile-app/lib/services/object_api.dart
+--- a/mobile-app/lib/services/object_api.dart
++++ b/mobile-app/lib/services/object_api.dart
+@@ -135,15 +135,44 @@
+       final response = await (() async => http.Response.fromStream(
+         await _client.send(request),
+       ))().timeout(requestTimeout ?? timeout);
+-      if (response.statusCode < 200 || response.statusCode >= 300)
+-        throw ApiException(switch (response.statusCode) {
+-          400 => '录像服务拒绝了访问地址，请检查主机白名单与网关配置',
+-          401 || 403 => '录像服务认证失败，请检查访问令牌',
+-          404 => '录像或证据不存在',
+-          409 => '该录像暂无可用结果，请在视频工作台完成分析',
+-          429 => '服务请求额度不足，请稍后重试',
+-          _ => '录像服务请求失败（HTTP ${response.statusCode}）',
+-        }, statusCode: response.statusCode);
++      if (response.statusCode < 200 || response.statusCode >= 300) {
++        String? code;
++        try {
++          final body = jsonDecode(utf8.decode(response.bodyBytes));
++          final value = body is Map && body['error'] is Map
++              ? body['error']['code']
++              : null;
++          if (value is String && RegExp(r'^[A-Z0-9_]{1,80}$').hasMatch(value))
++            code = value;
++        } catch (_) {
++          /* Never display arbitrary server bodies or credentials. */
++        }
++        final known = switch (code) {
++          'TRANSCODE_FAILED' => '视频转码失败，请由后端检查 FFmpeg 与编码兼容性',
++          'MODEL_NOT_CONFIGURED' ||
++          'NETWORK_DISABLED' ||
++          'COST_NOT_CONFIRMED' ||
++          'SAFETY_REVIEW_DISABLED' => '模型环境未就绪，请由后端负责人检查配置',
++          'VIDEO_INVALID' ||
++          'PROBE_FAILED' ||
++          'NO_VIDEO_STREAM' => '后端无法读取这个视频，请检查文件格式与媒体工具',
++          _ => null,
++        };
++        throw ApiException(
++          known ??
++              switch (response.statusCode) {
++                400 => '录像服务拒绝了访问地址，请检查主机白名单与网关配置',
++                401 || 403 => '录像服务认证失败，请检查访问令牌',
++                404 => '录像或证据不存在',
++                409 => '该录像暂无可用结果，请在视频工作台完成分析',
++                429 => '服务请求额度不足，请稍后重试',
++                413 => '视频超过后端限制或存储空间不足',
++                _ => '录像服务请求失败（HTTP ${response.statusCode}）',
++              },
++          statusCode: response.statusCode,
++          code: code,
++        );
++      }
+       return response;
+     } on TimeoutException {
+       throw const ApiException('录像服务响应超时，请检查地址与网络');
+diff --git a/mobile-app/lib/services/settings_store.dart b/mobile-app/lib/services/settings_store.dart
+--- a/mobile-app/lib/services/settings_store.dart
++++ b/mobile-app/lib/services/settings_store.dart
+@@ -4,7 +4,7 @@
+ 
+ const defaultApiBaseUrl = String.fromEnvironment(
+   'API_BASE_URL',
+-  defaultValue: 'http://127.0.0.1:8010',
++  defaultValue: 'http://127.0.0.1:8000',
+ );
+ 
+ class AppSettings {
+@@ -13,22 +13,39 @@
+     this.bearerToken = '',
+     this.contactId = 'primary',
+     this.pollSeconds = 15,
++    this.connectionVersion = 2,
+   });
+   final String baseUrl;
+   final String bearerToken;
+   final String contactId;
+   final int pollSeconds;
++  final int connectionVersion;
++  AppSettings copyWith({
++    String? baseUrl,
++    String? bearerToken,
++    String? contactId,
++    int? pollSeconds,
++    int? connectionVersion,
++  }) => AppSettings(
++    baseUrl: baseUrl ?? this.baseUrl,
++    bearerToken: bearerToken ?? this.bearerToken,
++    contactId: contactId ?? this.contactId,
++    pollSeconds: pollSeconds ?? this.pollSeconds,
++    connectionVersion: connectionVersion ?? this.connectionVersion,
++  );
+ 
+   Map<String, dynamic> toJson() => {
+     'base_url': baseUrl,
+     'bearer_token': bearerToken,
+     'contact_id': contactId,
+     'poll_seconds': pollSeconds,
++    'connection_version': connectionVersion,
+   };
+   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
+     baseUrl: json['base_url'] as String? ?? defaultApiBaseUrl,
+     bearerToken: json['bearer_token'] as String? ?? '',
+     contactId: json['contact_id'] == 'backup' ? 'backup' : 'primary',
++    connectionVersion: (json['connection_version'] as num?)?.toInt() ?? 1,
+     pollSeconds: ((json['poll_seconds'] as num?)?.toInt() ?? 15)
+         .clamp(5, 300)
+         .toInt(),
+@@ -81,12 +98,37 @@
+   Future<void> saveHousehold(HouseholdData data);
+ }
+ 
+-class SecureSettingsStore implements SettingsStore, HouseholdStore {
++abstract interface class AlertSyncStore {
++  Future<Map<String, dynamic>?> loadAlertSync(String scope);
++  Future<void> saveAlertSync(String scope, Map<String, dynamic> snapshot);
++}
++
++class SecureSettingsStore
++    implements SettingsStore, HouseholdStore, AlertSyncStore {
+   SecureSettingsStore({FlutterSecureStorage? storage})
+     : _storage = storage ?? const FlutterSecureStorage();
+   final FlutterSecureStorage _storage;
+   static const _settingsKey = 'elder_safety_settings_v1';
+   static const _pushKey = 'elder_safety_push_v1';
++  Future<void> _alertWrites = Future.value();
++  @override
++  Future<Map<String, dynamic>?> loadAlertSync(String scope) async {
++    final raw = await _storage.read(key: 'anju_alert_sync_v1|$scope');
++    return raw == null
++        ? null
++        : Map<String, dynamic>.from(jsonDecode(raw) as Map);
++  }
++
++  @override
++  Future<void> saveAlertSync(String scope, Map<String, dynamic> snapshot) {
++    // Cursor and matching mirror are one atomic secure-storage value.
++    final encoded = jsonEncode(snapshot);
++    final operation = _alertWrites.then(
++      (_) => _storage.write(key: 'anju_alert_sync_v1|$scope', value: encoded),
++    );
++    _alertWrites = operation.catchError((Object _) {});
++    return operation;
++  }
+ 
+   @override
+   Future<HouseholdData?> loadHousehold() async {
+diff --git a/mobile-app/lib/ui/devices_screen.dart b/mobile-app/lib/ui/devices_screen.dart
+--- a/mobile-app/lib/ui/devices_screen.dart
++++ b/mobile-app/lib/ui/devices_screen.dart
+@@ -115,7 +115,7 @@
+                 ),
+             ],
+           ),
+-          if (c.error != null) InfoBanner('实时摄像头服务：${c.error}', error: true),
++          if (c.error != null) InfoBanner('统一后端：${c.error}', error: true),
+           const SizedBox(height: 18),
+           for (final device in devices)
+             Padding(
+diff --git a/mobile-app/lib/ui/event_detail_screen.dart b/mobile-app/lib/ui/event_detail_screen.dart
+--- a/mobile-app/lib/ui/event_detail_screen.dart
++++ b/mobile-app/lib/ui/event_detail_screen.dart
+@@ -5,15 +5,20 @@
+ import 'widgets.dart';
+ import '../models/household.dart';
+ import 'member_widgets.dart';
++import '../models/unified_alert.dart';
++import '../services/object_api.dart';
++import 'objects_screen.dart' show EvidenceVideo;
+ 
+ class EventDetailScreen extends StatefulWidget {
+   const EventDetailScreen({
+     super.key,
+     required this.controller,
+     required this.eventId,
++    this.location,
+   });
+   final SafetyController controller;
+   final String eventId;
++  final AlertLocation? location;
+   @override
+   State<EventDetailScreen> createState() => _EventDetailScreenState();
+ }
+@@ -26,18 +31,35 @@
+   bool _loading = true;
+   bool _acting = false;
+   int _loadVersion = 0;
++  late final String _scope;
++  ObjectApi? _playbackApi;
+ 
+   @override
+   void initState() {
+     super.initState();
++    _scope = widget.location?.scope ?? widget.controller.alertScope;
+     widget.controller.addListener(_syncEvent);
+     _load();
+   }
+ 
+   void _syncEvent() {
+-    if (!mounted || _loading || _acting) return;
++    if (!mounted) return;
++    if (widget.controller.usesUnifiedBackend &&
++        widget.controller.alertScope != _scope) {
++      _loadVersion++;
++      setState(() {
++        _event = null;
++        _image = null;
++        _loading = false;
++        _error = '连接已切换，请返回当前服务重新打开告警';
++      });
++      return;
++    }
++    if (_loading || _acting) return;
+     for (final e in widget.controller.events) {
+-      if (e.id != widget.eventId) continue;
++      if (e.id != widget.eventId ||
++          (e.isUnified && _event != null && e.revision < _event!.revision))
++        continue;
+       if (e.evidenceId != _event?.evidenceId) {
+         _load();
+         return;
+@@ -50,6 +72,7 @@
+   @override
+   void dispose() {
+     widget.controller.removeListener(_syncEvent);
++    _playbackApi?.close();
+     super.dispose();
+   }
+ 
+@@ -62,7 +85,15 @@
+       _imageError = null;
+     });
+     try {
++      if (widget.controller.usesUnifiedBackend &&
++          _scope != widget.controller.alertScope)
++        throw StateError('通知所属后端与当前连接不同');
+       final event = await widget.controller.loadEvent(widget.eventId);
++      if (widget.location != null &&
++          event.details['source'] != widget.location!.source)
++        throw StateError('通知来源与告警详情不匹配');
++      if (event.fromVideo && _playbackApi == null)
++        _playbackApi = ObjectApi(widget.controller.household.objects);
+       Uint8List? image;
+       String? imageError;
+       if (widget.controller.isLocalEvent(event.id) ||
+@@ -88,7 +119,9 @@
+ 
+   Future<void> _act(bool resolve) async {
+     if (_acting || _loading || _event == null) return;
+-    if (resolve && _event!.fromVideo) return;
++    if (_event!.withdrawn ||
++        (resolve && _event!.fromVideo && !_event!.isUnified))
++      return;
+     setState(() => _acting = true);
+     if (resolve) {
+       final confirmed = await showDialog<bool>(
+@@ -184,14 +217,14 @@
+                   color: Colors.white,
+                   border: Border(top: BorderSide(color: Anju.line)),
+                 ),
+-                child: event.resolved
+-                    ? const Row(
++                child: event.resolved || event.withdrawn
++                    ? Row(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           Icon(Icons.check_circle_rounded, color: Anju.green),
+                           SizedBox(width: 9),
+                           Text(
+-                            '这条事件已解决',
++                            event.withdrawn ? '来源已撤销，不再提醒' : '这条事件已解决',
+                             style: TextStyle(
+                               color: Anju.green,
+                               fontWeight: FontWeight.w600,
+@@ -215,7 +248,7 @@
+                               ),
+                             ),
+                           ),
+-                          if (!event.fromVideo) ...[
++                          if (!event.fromVideo || event.isUnified) ...[
+                             const SizedBox(width: 12),
+                             Expanded(
+                               child: FilledButton(
+@@ -243,10 +276,7 @@
+                       error: true,
+                     ),
+                   if (widget.controller.error != null)
+-                    InfoBanner(
+-                      '实时摄像头服务：${widget.controller.error}',
+-                      error: true,
+-                    ),
++                    InfoBanner('统一后端：${widget.controller.error}', error: true),
+                   if (event == null)
+                     const EmptyState(
+                       title: '事件暂时无法读取',
+@@ -308,7 +338,7 @@
+                                 Expanded(
+                                   child: Text(
+                                     event.fromVideo
+-                                        ? '这是已上传录像中的历史线索，不代表实时现场。仅支持确认已收到；确认不等于风险已解决。'
++                                        ? '这是上传录像中的历史线索。请结合证据核实，再确认收到或标记处理完毕。'
+                                         : event.resolved
+                                         ? '已记录处理结果，感谢你的及时回应。'
+                                         : event.acknowledged
+@@ -337,9 +367,22 @@
+                       const SizedBox(height: 16),
+                       Surface(
+                         child: SelectableText(
+-                          '录像编号：${event.details['video_id'] ?? '未提供'}\n来源服务：${event.details['source_url'] ?? '未提供'}\n片内位置：${eventTimeLabel(event)}',
++                          '录像编号：${event.details['video_id'] ?? '未提供'}\n来源服务：${event.isUnified ? widget.controller.settings.baseUrl : event.details['source_url'] ?? '未提供'}\n片内位置：${eventTimeLabel(event)}',
+                           style: const TextStyle(fontSize: 12, height: 1.8),
+                         ),
++                      ),
++                    ],
++                    if (event.fromVideo &&
++                        event.details['playback_url'] is String &&
++                        _playbackApi != null) ...[
++                      const SizedBox(height: 16),
++                      EvidenceVideo(
++                        key: ValueKey('$_scope|${event.id}'),
++                        api: _playbackApi!,
++                        videoId: event.details['video_id']?.toString() ?? '',
++                        playbackPath: event.details['playback_url'] as String,
++                        startMs:
++                            (event.details['start_ms'] as num?)?.toInt() ?? 0,
+                       ),
+                     ],
+                     SectionTitle(
+diff --git a/mobile-app/lib/ui/history_screen.dart b/mobile-app/lib/ui/history_screen.dart
+--- a/mobile-app/lib/ui/history_screen.dart
++++ b/mobile-app/lib/ui/history_screen.dart
+@@ -19,6 +19,7 @@
+   int _tab = 0;
+   String _query = '';
+   String? _type;
++  String? _source;
+   DateTimeRange? _range;
+   final _search = TextEditingController();
+   @override
+@@ -51,6 +52,7 @@
+                           ? e.acknowledged && !e.resolved
+                           : e.resolved)) &&
+                   (_type == null || e.eventType == _type) &&
++                  (_source == null || e.details['source'] == _source) &&
+                   ('${eventTypeLabel(e.eventType)} ${eventSourceLabel(e, c.nameForDevice(e.deviceId))} ${e.id} ${e.eventType}')
+                       .toLowerCase()
+                       .contains(_query.toLowerCase().trim()),
+@@ -113,6 +115,24 @@
+           const SizedBox(height: 10),
+           Wrap(
+             spacing: 8,
++            runSpacing: 6,
++            children: [
++              for (final entry in const <String?, String>{
++                null: '全部来源',
++                'live_camera': '实时摄像头',
++                'uploaded_recording': '上传录像',
++              }.entries)
++                ChoiceChip(
++                  label: Text(entry.value),
++                  selected: _source == entry.key,
++                  onSelected: (_) => setState(() => _source = entry.key),
++                  showCheckmark: false,
++                ),
++            ],
++          ),
++          const SizedBox(height: 10),
++          Wrap(
++            spacing: 8,
+             runSpacing: 4,
+             crossAxisAlignment: WrapCrossAlignment.center,
+             children: [
+diff --git a/mobile-app/lib/ui/home_screen.dart b/mobile-app/lib/ui/home_screen.dart
+--- a/mobile-app/lib/ui/home_screen.dart
++++ b/mobile-app/lib/ui/home_screen.dart
+@@ -224,10 +224,7 @@
+           if (controller.videoError != null)
+             InfoBanner('录像服务：${controller.videoError}', error: true),
+           if (controller.error != null)
+-            InfoBanner(
+-              '实时摄像头服务同步未完成，当前显示上次记录。${controller.error}',
+-              error: true,
+-            ),
++            InfoBanner('统一后端同步未完成，当前显示上次记录。${controller.error}', error: true),
+           if (controller.storageWarning != null)
+             InfoBanner(controller.storageWarning!, error: true),
+           if (controller.preferencesError != null)
+diff --git a/mobile-app/lib/ui/members_screen.dart b/mobile-app/lib/ui/members_screen.dart
+--- a/mobile-app/lib/ui/members_screen.dart
++++ b/mobile-app/lib/ui/members_screen.dart
+@@ -303,7 +303,7 @@
+             ),
+             if (c.videoError != null)
+               InfoBanner('录像服务：${c.videoError}', error: true),
+-            if (c.error != null) InfoBanner('实时摄像头服务：${c.error}', error: true),
++            if (c.error != null) InfoBanner('统一后端：${c.error}', error: true),
+             SectionTitle(
+               member == null ? '人物事件' : '${member.displayName}的记录',
+               caption: '人物事件与家中风险分别展示',
+diff --git a/mobile-app/lib/ui/objects_screen.dart b/mobile-app/lib/ui/objects_screen.dart
+--- a/mobile-app/lib/ui/objects_screen.dart
++++ b/mobile-app/lib/ui/objects_screen.dart
+@@ -453,9 +453,10 @@
+   Future<void> _save() async {
+     setState(() => _busy = true);
+     try {
++      final current = widget.controller.household.objects;
+       final config = ObjectServiceConfig(
+-        baseUrl: _url.text.trim().replaceAll(RegExp(r'/+$'), ''),
+-        token: _token.text.trim(),
++        baseUrl: current.baseUrl,
++        token: current.token,
+         useCloud: _cloud,
+       );
+       {
+@@ -486,30 +487,14 @@
+           style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+         ),
+         const SizedBox(height: 12),
+-        ...[
+-          const SizedBox(height: 14),
+-          TextField(
+-            controller: _url,
+-            keyboardType: TextInputType.url,
+-            autocorrect: false,
+-            decoration: const InputDecoration(
+-              labelText: '原项目录像服务根地址',
+-              helperText: '例如 http://电脑局域网IP:8000，不加 /api',
+-            ),
+-          ),
+-          const SizedBox(height: 16),
+-          TextField(
+-            controller: _token,
+-            obscureText: true,
+-            autocorrect: false,
+-            enableSuggestions: false,
+-            decoration: const InputDecoration(labelText: '访问令牌（网关需要时填写）'),
+-          ),
+-          const SizedBox(height: 12),
+-          const InfoBanner(
+-            '原项目默认仅限本机访问。局域网联调需配置监听地址与 APP_ALLOWED_HOSTS；公网请使用带认证的 HTTPS 网关。',
+-          ),
+-        ],
++        SelectableText('统一后端：${widget.controller.settings.baseUrl}'),
++        const SizedBox(height: 12),
++        const InfoBanner('录像、物品与统一告警使用同一地址和令牌。在“我的 → 连接服务”修改统一连接。'),
++        TextButton.icon(
++          onPressed: () => openMediaSettings(context, widget.controller),
++          icon: const Icon(Icons.settings_outlined),
++          label: const Text('修改统一连接'),
++        ),
+         SwitchListTile.adaptive(
+           contentPadding: EdgeInsets.zero,
+           title: const Text('使用服务端大模型增强'),
+@@ -523,7 +508,7 @@
+           width: double.infinity,
+           child: FilledButton(
+             onPressed: _busy ? null : _save,
+-            child: Text(_busy ? '检查连接中…' : '保存录像连接'),
++            child: Text(_busy ? '检查连接中…' : '保存问答设置'),
+           ),
+         ),
+       ],
+@@ -742,10 +727,12 @@
+     required this.api,
+     required this.videoId,
+     this.startMs = 0,
++    this.playbackPath,
+   });
+   final ObjectApi api;
+   final String videoId;
+   final int startMs;
++  final String? playbackPath;
+   @override
+   State<EvidenceVideo> createState() => _EvidenceVideoState();
+ }
+@@ -758,7 +745,9 @@
+     setState(() => _busy = true);
+     try {
+       final player = VideoPlayerController.networkUrl(
+-        widget.api.videoUri(widget.videoId),
++        widget.playbackPath == null
++            ? widget.api.videoUri(widget.videoId)
++            : widget.api.uri(widget.playbackPath!),
+         httpHeaders: widget.api.headers,
+       );
+       _player = player;
+diff --git a/mobile-app/lib/ui/risks_screen.dart b/mobile-app/lib/ui/risks_screen.dart
+--- a/mobile-app/lib/ui/risks_screen.dart
++++ b/mobile-app/lib/ui/risks_screen.dart
+@@ -96,7 +96,7 @@
+           ),
+           if (c.videoError != null)
+             InfoBanner('录像服务：${c.videoError}', error: true),
+-          if (c.error != null) InfoBanner('实时摄像头服务：${c.error}', error: true),
++          if (c.error != null) InfoBanner('统一后端：${c.error}', error: true),
+           SectionTitle(
+             '环境事件',
+             action: TextButton(
+diff --git a/mobile-app/lib/ui/settings_screen.dart b/mobile-app/lib/ui/settings_screen.dart
+--- a/mobile-app/lib/ui/settings_screen.dart
++++ b/mobile-app/lib/ui/settings_screen.dart
+@@ -2,9 +2,7 @@
+ import 'package:flutter/material.dart';
+ import '../app_controller.dart';
+ import '../models/models.dart';
+-import '../models/household.dart';
+ import '../services/android_notices.dart';
+-import '../services/object_api.dart';
+ import '../services/api.dart';
+ import '../services/settings_store.dart';
+ import '../services/push_service.dart';
+@@ -121,7 +119,7 @@
+                     ? '连接需要检查'
+                     : c.lastSync != null
+                     ? '已同步 · ${shortTime(c.lastSync)}'
+-                    : '配置录像服务与可选安全后端',
++                    : '配置统一后端地址与访问令牌',
+                 () => _open(context, _ConnectionSheet(controller: c)),
+               ),
+               const Divider(indent: 56),
+@@ -231,9 +229,9 @@
+ }
+ 
+ class _ConnectionSheetState extends State<_ConnectionSheet> {
+-  late final TextEditingController _url, _token, _poll, _videoUrl, _videoToken;
++  late final TextEditingController _url, _token, _poll;
+   late String _contact;
+-  bool _show = false, _showVideo = false, _busy = false;
++  bool _show = false, _busy = false;
+   String? _message;
+   bool _error = false;
+   final _pollKey = GlobalKey();
+@@ -242,12 +240,9 @@
+   void initState() {
+     super.initState();
+     final s = widget.controller.settings;
+-    final objects = widget.controller.household.objects;
+     _url = TextEditingController(text: s.baseUrl);
+     _token = TextEditingController(text: s.bearerToken);
+     _poll = TextEditingController(text: '${s.pollSeconds}');
+-    _videoUrl = TextEditingController(text: objects.baseUrl);
+-    _videoToken = TextEditingController(text: objects.token);
+     _contact = s.contactId;
+   }
+ 
+@@ -256,8 +251,6 @@
+     _url.dispose();
+     _token.dispose();
+     _poll.dispose();
+-    _videoUrl.dispose();
+-    _videoToken.dispose();
+     super.dispose();
+   }
+ 
+@@ -266,12 +259,6 @@
+     bearerToken: _token.text.trim(),
+     contactId: _contact,
+     pollSeconds: int.tryParse(_poll.text.trim()) ?? 0,
+-  );
+-
+-  ObjectServiceConfig _objectCandidate() => ObjectServiceConfig(
+-    baseUrl: _videoUrl.text.trim().replaceAll(RegExp(r'/+$'), ''),
+-    token: _videoToken.text.trim(),
+-    useCloud: widget.controller.household.objects.useCloud,
+   );
+ 
+   Future<void> _run(bool probe) async {
+@@ -282,78 +269,45 @@
+       _message = null;
+       _error = false;
+     });
+-    ObjectApi? video;
+-    bool videoSaved = false;
++    UnifiedHttpSafetyRepository? repo;
+     try {
+       final candidate = _candidate();
+-      final objects = _objectCandidate();
+-      if (candidate.validationError != null) {
++      if (candidate.validationError != null)
+         throw ApiException(candidate.validationError!);
+-      }
+-      // ObjectApi validates the video root URL and optional token too.
+-      video = ObjectApi(objects);
++      if (candidate.bearerToken.isEmpty)
++        throw const ApiException('请填写 A 提供的统一访问令牌（APP_LAN_TOKEN）');
+       if (probe) {
+-        final results = <String>[];
+-        bool failed = false;
+-        try {
+-          final recordings = await video.recordings();
+-          results.add('录像服务可达，已读取 ${recordings.length} 段录像。');
+-        } catch (e) {
+-          failed = true;
+-          results.add('录像服务检查失败：$e');
+-        }
+-        if (candidate.bearerToken.isEmpty) {
+-          results.add('安全后端未启用（令牌为空），可独立使用录像服务。');
+-        } else {
+-          final repo = HttpSafetyRepository(
+-            baseUrl: candidate.baseUrl,
+-            bearerToken: candidate.bearerToken,
++        repo = UnifiedHttpSafetyRepository(
++          baseUrl: candidate.baseUrl,
++          bearerToken: candidate.bearerToken,
++        );
++        final connection = await repo.connection();
++        await repo.alertPage(limit: 1);
++        final ready = (connection['analysis'] as Map?)?['ready'] == true;
++        if (mounted)
++          setState(
++            () => _message =
++                '统一后端连接成功，身份验证通过。' +
++                (ready ? '分析服务已就绪。' : '模型尚未就绪，请由 A 检查模型环境；连接本身已成功。'),
+           );
+-          try {
+-            await repo.health();
+-            final devices = await repo.devices();
+-            await repo.events();
+-            results.add('安全后端可达，身份验证通过；已读取 ${devices.length} 台设备。');
+-          } catch (e) {
+-            failed = true;
+-            results.add('安全后端检查失败：$e');
+-          } finally {
+-            repo.close();
+-          }
+-        }
++      } else {
++        await widget.controller.applyConnection(candidate);
+         if (mounted)
+           setState(() {
+-            _message = results.join('\n');
+-            _error = failed;
+-          });
+-      } else {
+-        await widget.controller.saveObjectConfig(objects, refreshNow: false);
+-        videoSaved = true;
+-        await widget.controller.applyConnection(candidate);
+-        final c = widget.controller;
+-        final problems = [
+-          if (c.videoError != null) '录像服务：${c.videoError}',
+-          if (candidate.bearerToken.isNotEmpty && c.error != null)
+-            '安全后端：${c.error}',
+-        ];
+-        if (mounted)
+-          setState(() {
+-            _error = problems.isNotEmpty;
+-            _message = problems.isNotEmpty
+-                ? '配置已保存，部分连接需要检查：\n${problems.join('\n')}'
+-                : candidate.bearerToken.isEmpty
+-                ? '连接已保存；安全后端未启用，录像服务可独立使用。'
+-                : '连接已保存。';
++            _error = widget.controller.error != null;
++            _message = _error
++                ? '连接配置已保存；同步需要检查：${widget.controller.error}'
++                : '统一连接已保存，录像与两类告警共用此地址。';
+           });
+       }
+     } catch (e) {
+       if (mounted)
+         setState(() {
+-          _message = videoSaved ? '录像配置已保存，安全连接保存失败：$e' : '$e';
++          _message = '$e';
+           _error = true;
+         });
+     } finally {
+-      video?.close();
++      repo?.close();
+       if (mounted) setState(() => _busy = false);
+     }
+   }
+@@ -397,36 +351,10 @@
+         ),
+         const SizedBox(height: 8),
+         const Text(
+-          '连接录像服务；安全后端可按需启用。',
++          '一个后端地址连接录像、实摄告警、联系人和证据。',
+           style: TextStyle(color: Anju.muted, fontSize: 12),
+         ),
+         const SizedBox(height: 22),
+-        const Text('录像服务', style: TextStyle(fontWeight: FontWeight.w700)),
+-        const SizedBox(height: 16),
+-        TextField(
+-          controller: _videoUrl,
+-          enabled: !_busy,
+-          keyboardType: TextInputType.url,
+-          autocorrect: false,
+-          enableSuggestions: false,
+-          decoration: const InputDecoration(
+-            labelText: '录像服务地址',
+-            hintText: 'http://192.168.1.10:8000',
+-            helperText: '填写服务根地址，不包含 /api/videos。',
+-            helperMaxLines: 3,
+-          ),
+-        ),
+-        const SizedBox(height: 16),
+-        _tokenField(
+-          controller: _videoToken,
+-          label: '录像访问令牌',
+-          helper: '服务未启用认证时可留空；填写原文，不含 Bearer 前缀。',
+-          visible: _showVideo,
+-          toggle: () => setState(() => _showVideo = !_showVideo),
+-        ),
+-        const SizedBox(height: 24),
+-        const Text('安全后端（可选）', style: TextStyle(fontWeight: FontWeight.w700)),
+-        const SizedBox(height: 16),
+         TextField(
+           controller: _url,
+           enabled: !_busy,
+@@ -434,21 +362,21 @@
+           autocorrect: false,
+           enableSuggestions: false,
+           decoration: const InputDecoration(
+-            labelText: '安全后端地址',
+-            hintText: 'https://你的服务地址',
+-            helperText: '保留服务根地址，不包含 /api/v1。',
+-            helperMaxLines: 3,
++            labelText: '统一后端地址',
++            hintText: 'http://电脑局域网IP:8000',
++            helperText: '填写根地址，不加 /api。模拟器访问本机可用 http://10.0.2.2:8000。',
++            helperMaxLines: 4,
+           ),
+         ),
+         const SizedBox(height: 16),
+         _tokenField(
+           controller: _token,
+-          label: '安全用户令牌',
+-          helper: '可留空：仅使用录像服务；启用安全后端时填 token 原文，不含 Bearer 前缀。',
++          label: '统一访问令牌',
++          helper: '填写 A 配置的 APP_LAN_TOKEN 原文，不加 Bearer 前缀；不是模型 API Key。',
+           visible: _show,
+           toggle: () => setState(() => _show = !_show),
+         ),
+-        const SizedBox(height: 8),
++        const SizedBox(height: 16),
+         const InfoBanner('令牌保存在设备安全存储中。局域网可用私有 IP 的 HTTP 地址，外网连接请使用 HTTPS。'),
+         const SizedBox(height: 16),
+         DropdownButtonFormField<String>(
+@@ -750,7 +678,7 @@
+             SwitchListTile.adaptive(
+               contentPadding: EdgeInsets.zero,
+               title: const Text('家庭事件提醒'),
+-              subtitle: const Text('关闭后停止前台提醒；已注册的安全推送会尝试注销。'),
++              subtitle: const Text('关闭后停止新告警提醒；后台和锁屏送达情况以实际验证为准。'),
+               value: c.preferences.notificationsEnabled,
+               onChanged: _busy
+                   ? null
+@@ -835,15 +763,12 @@
+             const SizedBox(height: 8),
+             InfoBanner(
+               c.settings.bearerToken.isEmpty
+-                  ? '安全后端未启用（令牌为空）；可独立使用录像服务前台提醒。'
++                  ? '尚未填写统一访问令牌，请先连接后端。'
+                   : c.pushStatus,
+             ),
+             const SizedBox(height: 12),
+             Text(
+-              'App 前台自动刷新真实事件，并在通知权限与渠道开启后发送系统提醒。录像服务后台视频推送尚未实现。' +
+-                  (useFirebase
+-                      ? '安全后端后台与锁屏推送仍需服务端配置，并在真机验证送达。'
+-                      : '此安装包未启用 Firebase，安全后端后台与锁屏推送需另行配置。'),
++              'App 在前台刷新统一告警。通知服务尚未就绪，后台和锁屏提醒尚未验证。',
+               style: const TextStyle(
+                 fontSize: 13,
+                 color: Anju.muted,
+diff --git a/mobile-app/lib/ui/video_workspace_screen.dart b/mobile-app/lib/ui/video_workspace_screen.dart
+--- a/mobile-app/lib/ui/video_workspace_screen.dart
++++ b/mobile-app/lib/ui/video_workspace_screen.dart
+@@ -5,6 +5,7 @@
+ import 'package:video_player/video_player.dart';
+ import '../app_controller.dart';
+ import '../models/household.dart';
++import '../models/unified_alert.dart';
+ import '../services/api.dart';
+ import '../services/media_api.dart';
+ import '../services/object_api.dart';
+@@ -74,7 +75,7 @@
+     _foreground = state == AppLifecycleState.resumed;
+     _schedule();
+     if (!_foreground) _player?.pause();
+-    if (_foreground && widget.active && _job != null) unawaited(_poll());
++    if (_foreground && widget.active) unawaited(_load(preferred: _selected));
+   }
+ 
+   void _schedule() {
+@@ -275,6 +276,37 @@
+       _cancellation = null;
+       if (mounted) setState(() => _uploading = false);
+     }
++  }
++
++  Future<void> _openUnifiedRecordingAlert(
++    String videoId,
++    Map<String, dynamic> alert,
++  ) async {
++    await widget.controller.refresh();
++    if (!mounted) return;
++    final matches = widget.controller.events
++        .where(
++          (e) =>
++              e.isUnified &&
++              e.fromVideo &&
++              !e.withdrawn &&
++              e.details['video_id'] == videoId &&
++              e.details['source_event_id'] == alert['id'],
++        )
++        .toList();
++    if (matches.length != 1) {
++      setState(() => _error = '该记录尚未对应唯一的确认告警，请等待后端复核或刷新统一告警列表。');
++      return;
++    }
++    final event = matches.single;
++    widget.controller.openAlert(
++      AlertLocation(
++        backend: widget.controller.serviceScope,
++        household: 'default',
++        alertId: event.id,
++        source: 'uploaded_recording',
++      ),
++    );
+   }
+ 
+   Future<void> _analysis(String action) async {
+@@ -709,6 +741,8 @@
+               if (_plan != null && _plan!['message'] != null)
+                 InfoBanner(_plan!['message'].toString()),
+               const SectionTitle('危险事件'),
++              if (widget.controller.usesUnifiedBackend)
++                const InfoBanner('以下为录像分析记录。正式确认与处理请打开统一告警；未复核候选不触发正式危险通知。'),
+               if (_alerts.isEmpty)
+                 const Text(
+                   '暂无已生成的危险事件；没有记录不等于现场没有风险。',
+@@ -737,7 +771,15 @@
+                             ),
+                             child: const Text('定位原片'),
+                           ),
+-                          if (alert['acknowledged'] != true)
++                          if (widget.controller.usesUnifiedBackend)
++                            TextButton(
++                              onPressed: () => _openUnifiedRecordingAlert(
++                                selected.id,
++                                alert,
++                              ),
++                              child: const Text('查看并处理统一告警'),
++                            )
++                          else if (alert['acknowledged'] != true)
+                             TextButton(
+                               onPressed: () async {
+                                 try {
+diff --git a/mobile-app/lib/ui/widgets.dart b/mobile-app/lib/ui/widgets.dart
+--- a/mobile-app/lib/ui/widgets.dart
++++ b/mobile-app/lib/ui/widgets.dart
+@@ -183,15 +183,21 @@
+   _ => '通知状态未知',
+ };
+ 
+-bool eventNeedsAction(SafetyEvent event) =>
+-    !event.resolved && (!event.fromVideo || !event.acknowledged);
+-
+-String eventStateLabel(SafetyEvent event) => event.fromVideo
++bool eventNeedsAction(SafetyEvent event) => event.isUnified
++    ? event.confirmedDanger && !event.resolved
++    : !event.resolved && (!event.fromVideo || !event.acknowledged);
++
++String eventStateLabel(SafetyEvent event) => event.withdrawn
++    ? '来源已撤销'
++    : event.isUnified
++    ? stateLabel(event.state)
++    : event.fromVideo
+     ? (event.acknowledged ? '已确认' : '待确认')
+     : stateLabel(event.state);
+ 
+ String eventSourceLabel(SafetyEvent event, String deviceLabel) {
+-  if (!event.fromVideo) return deviceLabel;
++  if (!event.fromVideo)
++    return event.isUnified ? '实摄 · $deviceLabel' : deviceLabel;
+   final name = event.details['video_name']?.toString().trim() ?? '';
+   final id = event.details['video_id']?.toString().trim() ?? '';
+   return '录像 · ${name.isNotEmpty
+diff --git a/mobile-app/test/controller_test.dart b/mobile-app/test/controller_test.dart
+--- a/mobile-app/test/controller_test.dart
++++ b/mobile-app/test/controller_test.dart
+@@ -20,7 +20,7 @@
+       await c.initialize();
+       await c.refresh();
+       expect(c.initialized, isTrue);
+-      expect(c.error, isNull);
++      expect(c.error, contains('统一后端'));
+       expect(c.videoError, isNull);
+       expect(c.events, isEmpty);
+       expect(c.devices, isEmpty);
+@@ -157,7 +157,7 @@
+       await controller.initialize();
+       expect(controller.initialized, true);
+       expect(controller.storageWarning, isNotNull);
+-      expect(controller.error, isNull);
++      expect(controller.error, contains('统一后端'));
+       expect(controller.events, isEmpty);
+       expect(controller.devices, isEmpty);
+       expect(controller.household.members, isEmpty);
+diff --git a/mobile-app/test/models_test.dart b/mobile-app/test/models_test.dart
+--- a/mobile-app/test/models_test.dart
++++ b/mobile-app/test/models_test.dart
+@@ -106,30 +106,33 @@
+     },
+   );
+ 
+-  test('default API uses 8010 and structured backend Review is readable', () {
+-    expect(const AppSettings().baseUrl, 'http://127.0.0.1:8010');
+-    expect(const AppSettings().bearerToken, isEmpty);
+-    expect(const AppSettings().toJson(), isNot(contains('demo_mode')));
+-    final event = SafetyEvent.fromJson({
+-      ...eventJson(),
+-      'review_summary': {
+-        'summary': '需家属核实',
+-        'observations': ['人物接近地面'],
+-        'limitations': ['画面遮挡'],
+-        'uncertainty': 'high',
+-      },
+-    });
+-    expect(event.reviewSummary, '需家属核实\n观察：人物接近地面\n局限：画面遮挡\n不确定性：high');
+-    expect(
+-      SafetyDevice.fromJson({
+-        'device_id': 'camera-1',
+-        'name': '客厅',
+-        'online': true,
+-      }).id,
+-      'camera-1',
+-    );
+-    expect(useFirebase, false);
+-  });
++  test(
++    'default API uses unified 8000 and structured backend Review is readable',
++    () {
++      expect(const AppSettings().baseUrl, 'http://127.0.0.1:8000');
++      expect(const AppSettings().bearerToken, isEmpty);
++      expect(const AppSettings().toJson(), isNot(contains('demo_mode')));
++      final event = SafetyEvent.fromJson({
++        ...eventJson(),
++        'review_summary': {
++          'summary': '需家属核实',
++          'observations': ['人物接近地面'],
++          'limitations': ['画面遮挡'],
++          'uncertainty': 'high',
++        },
++      });
++      expect(event.reviewSummary, '需家属核实\n观察：人物接近地面\n局限：画面遮挡\n不确定性：high');
++      expect(
++        SafetyDevice.fromJson({
++          'device_id': 'camera-1',
++          'name': '客厅',
++          'online': true,
++        }).id,
++        'camera-1',
++      );
++      expect(useFirebase, false);
++    },
++  );
+ 
+   test('unified event fields are retained; optional values remain unknown', () {
+     final event = SafetyEvent.fromJson(eventJson());
+diff --git a/mobile-app/test/phone_contract_http_test.dart b/mobile-app/test/phone_contract_http_test.dart
+new file mode 100644
+--- /dev/null
++++ b/mobile-app/test/phone_contract_http_test.dart
+@@ -0,0 +1,90 @@
++import 'dart:io';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:elder_safety_mobile/services/api.dart';
++import 'package:elder_safety_mobile/services/media_api.dart';
++import 'package:elder_safety_mobile/models/household.dart';
++
++const backend = String.fromEnvironment('B_CONTRACT_URL');
++const videoPath = String.fromEnvironment('B_CONTRACT_VIDEO');
++const fixtureToken = 'b-contract-fixture-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
++
++void main() {
++  test(
++    'A real HTTP contract: two clients, source IDs, evidence, ack and resolve',
++    () async {
++      final one = UnifiedHttpSafetyRepository(
++        baseUrl: backend,
++        bearerToken: fixtureToken,
++      );
++      final two = UnifiedHttpSafetyRepository(
++        baseUrl: backend,
++        bearerToken: fixtureToken,
++      );
++      addTearDown(one.close);
++      addTearDown(two.close);
++      final syncOne = UnifiedAlertSynchronizer(one),
++          syncTwo = UnifiedAlertSynchronizer(two);
++      final first = await syncOne.synchronize();
++      await syncTwo.synchronize();
++      expect(first.events.map((e) => e.details['source']).toSet(), {
++        'live_camera',
++        'uploaded_recording',
++      });
++      expect(first.events.map((e) => e.id).toSet().length, 2);
++      final live = first.events.singleWhere((e) => !e.fromVideo);
++      final bytes = await one.mediaImage(live.evidenceId!);
++      expect(bytes.take(2), [255, 216]);
++      final ack = await one.handleAlert(live.id, resolve: false);
++      await syncTwo.synchronize();
++      expect(
++        syncTwo.events.singleWhere((e) => e.id == live.id).acknowledged,
++        isTrue,
++      );
++      expect(
++        (await two.handleAlert(live.id, resolve: false)).revision,
++        ack.revision,
++      );
++      await one.handleAlert(live.id, resolve: true);
++      expect((await two.handleAlert(live.id, resolve: false)).resolved, isTrue);
++    },
++    skip: backend.isEmpty
++        ? 'Requires isolated A phone_contract_fixture.py, never production'
++        : false,
++  );
++
++  test(
++    'A real HTTP contract: chunk upload, library, objects job and result',
++    () async {
++      final api = MediaApi(
++        const ObjectServiceConfig(baseUrl: backend, token: fixtureToken),
++      );
++      addTearDown(api.close);
++      final id = await api.uploadVideo(
++        File(videoPath),
++        'B-SYNTHETIC-CONTRACT.mp4',
++        cancellation: UploadCancellation(),
++        onProgress: (sent, total) {},
++      );
++      expect((await api.recordings()).any((v) => v.id == id), isTrue);
++      final job = await api.analyze(id, 'objects');
++      final jobId = (job['id'] ?? job['job_id']).toString();
++      Map<String, dynamic> progress = {};
++      for (var n = 0; n < 100; n++) {
++        progress = await api.job(jobId);
++        if (!['queued', 'running'].contains(progress['status'])) break;
++        await Future<void>.delayed(const Duration(milliseconds: 200));
++      }
++      expect(
++        progress['status'],
++        'completed',
++        reason: progress['error']?.toString(),
++      );
++      final result = await api.memory(id);
++      expect(result.data['is_mock'], isTrue);
++      expect(result.entities, isNotEmpty);
++    },
++    skip: backend.isEmpty || videoPath.isEmpty
++        ? 'Requires temporary synthetic video and A fixture'
++        : false,
++  );
++}
+diff --git a/mobile-app/test/support/phone_contract_fixture.py b/mobile-app/test/support/phone_contract_fixture.py
+new file mode 100644
+--- /dev/null
++++ b/mobile-app/test/support/phone_contract_fixture.py
+@@ -0,0 +1,74 @@
++"""B integration fixture: real A HTTP handlers, temporary synthetic data only.
++
++Never opens a camera, calls a paid model, or edits the backend repository.
++The source collector is replaced on this test app instance to retain explicitly
++seeded projections; this is transport/contract validation, not recognition QA.
++"""
++from pathlib import Path
++from types import SimpleNamespace
++from datetime import datetime, timezone
++import argparse,json,sys,tempfile,subprocess
++
++parser=argparse.ArgumentParser()
++parser.add_argument('--backend-root',required=True)
++parser.add_argument('--ffmpeg-dir',required=True)
++parser.add_argument('--ready-file',required=True)
++parser.add_argument('--port',type=int,default=18031)
++args=parser.parse_args()
++backend=Path(args.backend_root).resolve()
++sys.path.insert(0,str(backend))
++import cv2,numpy as np,httpx,uvicorn
++from backend.config import Settings
++from backend.phone_app import create_app
++from backend.alert_center import alert_id
++from tests.conftest import MockVisionProvider
++
++token='b-contract-fixture-'+'x'*32
++with tempfile.TemporaryDirectory(prefix='anju-b-contract-') as directory:
++ root=Path(directory)
++ ffmpeg=Path(args.ffmpeg_dir)
++ settings=Settings(data_dir=root/'data',allowed_hosts=('127.0.0.1','localhost','10.0.2.2'),
++   lan_token=token,hybrid_safety_enabled=False,enhanced_safety_sampling=False,
++   ffmpeg=str(ffmpeg/'ffmpeg.exe'),ffprobe=str(ffmpeg/'ffprobe.exe'))
++ def upstream(request):
++  if request.url.path.endswith('/preferences'):
++   return httpx.Response(200,json={'escalation_seconds':60,'notifications_enabled':True,
++      'contacts':[{'contact_id':'primary','name':'Contract fixture'}]})
++  return httpx.Response(200,json=[])
++ app=create_app(settings,MockVisionProvider(),
++   safety_repo=SimpleNamespace(s=SimpleNamespace(user_token='fixture-internal-not-production')),
++   transport=httpx.MockTransport(upstream))
++ app.state.alert_sources.sync=lambda:None
++ app.state.alert_sources.status={source:{'ready':True} for source in ('live_camera','uploaded_recording')}
++ frame=root/'synthetic.jpg'
++ assert cv2.imwrite(str(frame),np.zeros((32,32,3),dtype=np.uint8))
++ center=app.state.alert_center
++ for source in ('live_camera','uploaded_recording'):
++  identifier=alert_id(source,'B_SYNTHETIC_CONTRACT_ONLY')
++  image=center.save_image(identifier,0,frame,root)
++  center.upsert({'id':identifier,'source':source,'source_key':'B_SYNTHETIC_CONTRACT_ONLY',
++    'source_event_id':'B_SYNTHETIC_CONTRACT_ONLY','camera_id':'fixture-camera' if source=='live_camera' else None,
++    'video_id':'fixture-recording' if source=='uploaded_recording' else None,
++    'run_id':'fixture-run' if source=='uploaded_recording' else None,
++    'title':'SYNTHETIC CONTRACT ONLY','event_type':'help_requested','severity':'critical',
++    'occurred_at':datetime.now(timezone.utc).isoformat() if source=='live_camera' else None,
++    'video_offset_ms':1200 if source=='uploaded_recording' else None,
++    'review_status':'confirmed','review_model':'SYNTHETIC_FIXTURE_NO_MODEL_CALL',
++    'review_reason':'Contract projection only; no camera or real recognition',
++    'evidence':[image],'evidence_status':'available','playback_url':None},historical=True)
++ raw=root/'raw-synthetic.mp4'
++ video=root/'synthetic.mp4'
++ writer=cv2.VideoWriter(str(raw),cv2.VideoWriter_fourcc(*'mp4v'),10,(320,180))
++ assert writer.isOpened()
++ for n in range(120):
++  frame=np.zeros((180,320,3),dtype=np.uint8)
++  cv2.rectangle(frame,(10+n,90),(35+n,115),(100,210,80),-1)
++  writer.write(frame)
++ writer.release()
++ # H.264 fixture exercises phone upload without hiding the separately recorded
++ # A/FFmpeg9 legacy -vsync incompatibility on codecs requiring transcoding.
++ subprocess.run([str(ffmpeg/'ffmpeg.exe'),'-v','error','-y','-i',str(raw),
++   '-c:v','libx264','-pix_fmt','yuv420p','-an',str(video)],check=True,capture_output=True)
++ Path(args.ready_file).write_text(json.dumps({'synthetic':True,'base_url':f'http://127.0.0.1:{args.port}',
++   'video_path':str(video),'backend_revision':'d272b8737ddd59a33e66b79ef120e60bf6d2be6b'}),encoding='utf-8')
++ uvicorn.run(app,host='127.0.0.1',port=args.port,log_level='warning')
+diff --git a/mobile-app/test/unified_alert_test.dart b/mobile-app/test/unified_alert_test.dart
+new file mode 100644
+--- /dev/null
++++ b/mobile-app/test/unified_alert_test.dart
+@@ -0,0 +1,496 @@
++import 'dart:async';
++import 'dart:convert';
++import 'dart:typed_data';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:http/http.dart' as http;
++import 'package:http/testing.dart';
++import 'package:elder_safety_mobile/app_controller.dart';
++import 'package:elder_safety_mobile/models/models.dart';
++import 'package:elder_safety_mobile/models/unified_alert.dart';
++import 'package:elder_safety_mobile/services/api.dart';
++import 'package:elder_safety_mobile/services/settings_store.dart';
++import 'package:elder_safety_mobile/services/object_api.dart';
++import 'package:elder_safety_mobile/models/household.dart';
++import 'fakes.dart';
++
++Map<String, dynamic> alert(
++  String id,
++  int revision, {
++  String source = 'live_camera',
++  String handling = 'unacknowledged',
++  String review = 'confirmed',
++}) => {
++  'id': id,
++  'revision': revision,
++  'source': source,
++  'source_event_id': 'raw-$id',
++  'camera_id': source == 'live_camera' ? 'camera-1' : null,
++  'video_id': source == 'uploaded_recording' ? 'video-1' : null,
++  'event_type': 'suspected_fall',
++  'severity': 'critical',
++  'review_status': review,
++  'review_reason': 'CONTRACT FIXTURE ONLY',
++  'handling_status': handling,
++  'occurred_at': source == 'live_camera' ? '2026-11-04T03:00:00Z' : null,
++  'created_at': '2026-11-04T04:00:00Z',
++  'video_offset_ms': source == 'uploaded_recording' ? 1200 : null,
++  'evidence': [
++    {'url': '/api/alerts/$id/evidence/0', 'media_type': 'image/jpeg'},
++  ],
++  'playback_url': source == 'uploaded_recording'
++      ? '/media/videos/video-1'
++      : null,
++};
++Map<String, dynamic> page(
++  List<Map<String, dynamic>> events,
++  int cursor, {
++  int offset = 0,
++  bool more = false,
++}) => {
++  'alerts': events,
++  'total': events.length,
++  'offset': offset,
++  'has_more': more,
++  'snapshot_cursor': cursor,
++};
++Map<String, dynamic> changes(
++  List<Map<String, dynamic>> events,
++  int cursor, {
++  bool more = false,
++  int? server,
++}) => {
++  'alerts': events,
++  'next_cursor': cursor,
++  'server_cursor': server ?? cursor,
++  'has_more': more,
++};
++
++class ContractRepository extends RecordingRepository
++    implements UnifiedAlertRepository {
++  @override
++  String backendUrl = 'http://10.0.2.2:8000';
++  List<Map<String, dynamic>> records = [];
++  int revision = 0;
++  Future<Map<String, dynamic>> Function(int)? onPage, onChanges;
++  int? failAtOffset;
++  int pages = 0, deltas = 0;
++  @override
++  Future<Map<String, dynamic>> connection() async => {
++    'contract_version': '2026-11-04.v1',
++    'household': 'default',
++  };
++  @override
++  Future<Map<String, dynamic>> alertPage({
++    int offset = 0,
++    int limit = 100,
++  }) async {
++    pages++;
++    if (failAtOffset == offset) throw const ApiException('offline');
++    return onPage?.call(offset) ?? page(records, revision, offset: offset);
++  }
++
++  @override
++  Future<Map<String, dynamic>> alertChanges(
++    int after, {
++    int limit = 100,
++  }) async {
++    deltas++;
++    return onChanges?.call(after) ??
++        changes(
++          records.where((e) => (e['revision'] as int) > after).toList(),
++          revision,
++        );
++  }
++
++  @override
++  Future<SafetyEvent> event(String id) async =>
++      unifiedAlertFromJson(records.singleWhere((e) => e['id'] == id));
++  @override
++  Future<SafetyEvent> handleAlert(String id, {required bool resolve}) async {
++    final previous = records.singleWhere((e) => e['id'] == id);
++    final updated = {
++      ...previous,
++      'revision': ++revision,
++      'handling_status': resolve || previous['handling_status'] == 'resolved'
++          ? 'resolved'
++          : 'acknowledged',
++    };
++    records = records.map((e) => e['id'] == id ? updated : e).toList();
++    return unifiedAlertFromJson(updated);
++  }
++
++  @override
++  Uri mediaUri(String path) => Uri.parse('$backendUrl$path');
++  @override
++  Future<Uint8List> mediaImage(String path) async => Uint8List.fromList([1]);
++}
++
++class SyncStore extends MemorySettingsStore implements AlertSyncStore {
++  Map<String, Map<String, dynamic>> caches = {};
++  @override
++  Future<Map<String, dynamic>?> loadAlertSync(String scope) async =>
++      caches[scope];
++  @override
++  Future<void> saveAlertSync(
++    String scope,
++    Map<String, dynamic> snapshot,
++  ) async {
++    caches[scope] = jsonDecode(jsonEncode(snapshot)) as Map<String, dynamic>;
++  }
++}
++
++void main() {
++  test(
++    'ack during initial baseline cannot be replaced by a stale initial page',
++    () async {
++      final repo = ContractRepository()
++        ..records = [alert('a_x', 1)]
++        ..revision = 1;
++      final blocked = Completer<Map<String, dynamic>>();
++      repo.onChanges = (_) => blocked.future;
++      final sync = UnifiedAlertSynchronizer(repo);
++      final initial = sync.synchronize();
++      await Future<void>.delayed(Duration.zero);
++      await sync.accept(
++        unifiedAlertFromJson(alert('a_x', 3, handling: 'resolved')),
++      );
++      blocked.complete(changes([], 1));
++      await initial;
++      expect(sync.events.single.resolved, isTrue);
++      expect(sync.events.single.revision, 3);
++      repo.close();
++    },
++  );
++  test(
++    'old two-origin settings migrate without reusing the internal user token',
++    () async {
++      final store = MemorySettingsStore()
++        ..settings = AppSettings.fromJson({
++          'base_url': 'http://192.168.1.8:8010',
++          'bearer_token': 'old-private-user-token',
++        })
++        ..householdData = HouseholdData.initial().copyWith(
++          members: [
++            const MemberProfile(id: 'member-1', number: 1, name: 'Preserved'),
++          ],
++        );
++      final c = SafetyController(store: store, videoApiFactory: emptyVideoApi);
++      addTearDown(c.dispose);
++      await c.initialize();
++      expect(c.settings.baseUrl, 'http://192.168.1.8:8000');
++      expect(c.settings.bearerToken, isEmpty);
++      expect(c.household.objects.baseUrl, c.settings.baseUrl);
++      expect(store.settings.connectionVersion, 2);
++      expect(c.household.members.single.name, 'Preserved');
++      expect(c.storageWarning, contains('迁移'));
++    },
++  );
++  test(
++    'transcode errors are distinct from host allowlist failures and never echo bodies',
++    () async {
++      final api = ObjectApi(
++        const ObjectServiceConfig(),
++        client: MockClient(
++          (_) async => http.Response(
++            jsonEncode({
++              'error': {
++                'code': 'TRANSCODE_FAILED',
++                'message': 'private-server-detail',
++              },
++            }),
++            400,
++          ),
++        ),
++      );
++      addTearDown(api.close);
++      try {
++        await api.getJson('/api/health');
++        fail('Expected failure');
++      } on ApiException catch (e) {
++        expect(e.code, 'TRANSCODE_FAILED');
++        expect(e.message, contains('转码'));
++        expect(e.message, isNot(contains('private-server-detail')));
++      }
++    },
++  );
++  test(
++    'late response from old backend cannot replace the new backend snapshot',
++    () async {
++      final old = ContractRepository()
++        ..records = [alert('a_old', 1)]
++        ..revision = 1;
++      final next = ContractRepository()
++        ..backendUrl = 'http://10.0.2.2:8001'
++        ..records = [alert('a_new', 1)]
++        ..revision = 1;
++      final store = SyncStore()
++        ..settings = const AppSettings(
++          baseUrl: 'http://10.0.2.2:8000',
++          bearerToken: 'fixture',
++        );
++      final c = SafetyController(
++        store: store,
++        repositoryFactory: (s) => s.baseUrl.endsWith('8001') ? next : old,
++        videoApiFactory: emptyVideoApi,
++      );
++      addTearDown(c.dispose);
++      await c.initialize();
++      final blocked = Completer<Map<String, dynamic>>();
++      old.onChanges = (_) => blocked.future;
++      final inFlight = c.refresh();
++      await Future<void>.delayed(Duration.zero);
++      await c.applyConnection(
++        const AppSettings(
++          baseUrl: 'http://10.0.2.2:8001',
++          bearerToken: 'fixture',
++        ),
++      );
++      blocked.complete(changes([alert('a_old', 2)], 2));
++      await inFlight;
++      expect(c.events.single.id, 'a_new');
++      expect(c.alertScope, 'http://10.0.2.2:8001|default');
++    },
++  );
++  test(
++    'uploaded wall-clock remains unknown and handling/review are separate',
++    () {
++      final e = unifiedAlertFromJson(
++        alert('a_video', 4, source: 'uploaded_recording', handling: 'resolved'),
++      );
++      expect(e.occurredAt, isNull);
++      expect(e.createdAt, isNotNull);
++      expect(e.details['start_ms'], 1200);
++      expect(e.fromVideo, isTrue);
++      expect(e.resolved, isTrue);
++      expect(e.acknowledged, isTrue);
++      expect(e.reviewStatus, 'confirmed');
++      expect(SafetyEvent.fromJson(e.toJson()).revision, 4);
++    },
++  );
++  test('notification locator is scoped, serializable and credential-free', () {
++    final loc = AlertLocation.tryParse({
++      'backend': 'http://10.0.2.2:8000/',
++      'household': 'default',
++      'alert_id': 'a_x',
++      'source': 'live_camera',
++    });
++    expect(loc!.scope, 'http://10.0.2.2:8000|default');
++    expect(
++      AlertLocation.tryParse({
++        ...loc.toJson(),
++        'backend': 'http://user:password@host',
++      }),
++      isNull,
++    );
++    expect(
++      AlertLocation.tryParse({...loc.toJson(), 'source': 'unknown'}),
++      isNull,
++    );
++    expect(jsonEncode(loc.toJson()).contains('token'), isFalse);
++  });
++  test(
++    'baseline uses first page cursor and catches concurrent changes without notifying history',
++    () async {
++      final repo = ContractRepository();
++      final offsets = <int>[];
++      final cursors = <int>[];
++      repo.onPage = (offset) async {
++        offsets.add(offset);
++        return offset == 0
++            ? page([alert('a_live', 1)], 1, more: true)
++            : page(
++                [alert('a_video', 2, source: 'uploaded_recording')],
++                9,
++                offset: offset,
++              );
++      };
++      repo.onChanges = (after) async {
++        cursors.add(after);
++        return changes([alert('a_live', 3, handling: 'resolved')], 3);
++      };
++      final saved = <Map<String, dynamic>>[];
++      final sync = UnifiedAlertSynchronizer(
++        repo,
++        persist: (value) async => saved.add(value),
++      );
++      final result = await sync.synchronize();
++      expect(offsets, [0, 1]);
++      expect(cursors, [1]);
++      expect(result.initial, isTrue);
++      expect(result.cursor, 3);
++      expect(
++        result.events.singleWhere((e) => e.id == 'a_live').resolved,
++        isTrue,
++      );
++      expect(saved.single['cursor'], 3);
++      expect(saved.single['events'], hasLength(2));
++      repo.close();
++    },
++  );
++  test('failed partial initial page publishes no cache or cursor', () async {
++    final repo = ContractRepository()..failAtOffset = 1;
++    repo.onPage = (offset) async => page([alert('a_x', 1)], 1, more: true);
++    var writes = 0;
++    final sync = UnifiedAlertSynchronizer(
++      repo,
++      persist: (_) async {
++        writes++;
++      },
++    );
++    await expectLater(sync.synchronize(), throwsA(isA<ApiException>()));
++    expect(sync.events, isEmpty);
++    expect(sync.cursor, 0);
++    expect(writes, 0);
++    repo.close();
++  });
++  test(
++    'delta failure does not skip data; older revision cannot undo an ack',
++    () async {
++      final repo = ContractRepository()
++        ..records = [alert('a_x', 1)]
++        ..revision = 1;
++      final sync = UnifiedAlertSynchronizer(repo);
++      await sync.synchronize();
++      repo.onChanges = (_) async =>
++          throw const ApiException('401', statusCode: 401);
++      await expectLater(sync.synchronize(), throwsA(isA<ApiException>()));
++      expect(sync.cursor, 1);
++      await sync.accept(
++        unifiedAlertFromJson(alert('a_x', 8, handling: 'resolved')),
++      );
++      repo.onChanges = (_) async => changes([alert('a_x', 2)], 8);
++      final result = await sync.synchronize();
++      expect(result.initial, isFalse);
++      expect(result.events.single.resolved, isTrue);
++      expect(result.events.single.revision, 8);
++      repo.close();
++    },
++  );
++  test(
++    'ack response racing an in-flight delta retains highest revision',
++    () async {
++      final repo = ContractRepository()
++        ..records = [alert('a_x', 1)]
++        ..revision = 1;
++      final sync = UnifiedAlertSynchronizer(repo);
++      await sync.synchronize();
++      final block = Completer<Map<String, dynamic>>();
++      repo.onChanges = (_) => block.future;
++      final running = sync.synchronize();
++      await Future<void>.delayed(Duration.zero);
++      await sync.accept(
++        unifiedAlertFromJson(alert('a_x', 4, handling: 'resolved')),
++      );
++      block.complete(changes([alert('a_x', 2)], 2));
++      await running;
++      expect(sync.events.single.resolved, isTrue);
++      expect(sync.events.single.revision, 4);
++      repo.close();
++    },
++  );
++  test(
++    'restart restores mirror with cursor; server reset re-baselines authoritatively',
++    () async {
++      final repo = ContractRepository()
++        ..records = [alert('a_x', 9)]
++        ..revision = 9;
++      Map<String, dynamic>? cache;
++      await UnifiedAlertSynchronizer(
++        repo,
++        persist: (v) async {
++          cache = v;
++        },
++      ).synchronize();
++      final resumed = UnifiedAlertSynchronizer(repo)..restore(cache);
++      await resumed.synchronize();
++      expect(repo.pages, 1);
++      repo.records = [alert('a_reset', 1)];
++      repo.revision = 1;
++      final result = await resumed.synchronize();
++      expect(result.initial, isTrue);
++      expect(result.events.single.id, 'a_reset');
++      expect(result.cursor, 1);
++      repo.close();
++    },
++  );
++  test(
++    'HTTP API adds auth to unified detail/actions and only same-origin evidence',
++    () async {
++      final seen = <String>[];
++      final repo = UnifiedHttpSafetyRepository(
++        baseUrl: 'http://127.0.0.1:8000',
++        bearerToken: 'fixture-token',
++        client: MockClient((request) async {
++          expect(request.headers['authorization'], 'Bearer fixture-token');
++          seen.add('${request.method} ${request.url.path}');
++          if (request.url.path.endsWith('/evidence/0'))
++            return http.Response.bytes(
++              [1, 2],
++              200,
++              headers: {'content-type': 'image/jpeg'},
++            );
++          if (request.url.path == '/api/connection')
++            return http.Response(
++              jsonEncode({
++                'contract_version': '2026-11-04.v1',
++                'household': 'default',
++              }),
++              200,
++            );
++          return http.Response(jsonEncode(alert('a_x', 3)), 200);
++        }),
++      );
++      await repo.health();
++      await repo.event('a_x');
++      await repo.handleAlert('a_x', resolve: true);
++      await repo.mediaImage('/api/alerts/a_x/evidence/0');
++      expect(
++        () => repo.mediaUri('https://other.example/image'),
++        throwsA(isA<ApiException>()),
++      );
++      expect(seen, contains('POST /api/alerts/a_x/resolve'));
++      repo.close();
++    },
++  );
++  test(
++    'two controllers share authoritative handling state and publish one business stream',
++    () async {
++      final backend = ContractRepository()
++        ..records = [alert('a_x', 1)]
++        ..revision = 1;
++      final one = SafetyController(
++        store: SyncStore()
++          ..settings = const AppSettings(
++            baseUrl: 'http://10.0.2.2:8000',
++            bearerToken: 'fixture',
++          ),
++        repositoryFactory: (_) => backend,
++        videoApiFactory: emptyVideoApi,
++      );
++      final two = SafetyController(
++        store: MemorySettingsStore()
++          ..settings = const AppSettings(
++            baseUrl: 'http://10.0.2.2:8000',
++            bearerToken: 'fixture',
++          ),
++        repositoryFactory: (_) => backend,
++        videoApiFactory: emptyVideoApi,
++      );
++      final snapshots = <AlertSyncSnapshot>[];
++      final notices = <EventNotice>[];
++      one.alertSnapshots.stream.listen(snapshots.add);
++      one.notices.stream.listen(notices.add);
++      await one.initialize();
++      await two.initialize();
++      expect(one.events.single.id, two.events.single.id);
++      await one.resolveEvent('a_x');
++      await two.refresh();
++      expect(two.events.single.resolved, isTrue);
++      expect(notices, isEmpty);
++      expect(snapshots.first.initial, isTrue);
++      expect(snapshots.first.complete, isTrue);
++      one.dispose();
++      two.dispose();
++    },
++  );
++}
+diff --git a/mobile-app/test/unified_app_test.dart b/mobile-app/test/unified_app_test.dart
+new file mode 100644
+--- /dev/null
++++ b/mobile-app/test/unified_app_test.dart
+@@ -0,0 +1,133 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:elder_safety_mobile/app.dart';
++import 'package:elder_safety_mobile/app_controller.dart';
++import 'package:elder_safety_mobile/models/unified_alert.dart';
++import 'package:elder_safety_mobile/services/settings_store.dart';
++import 'package:elder_safety_mobile/ui/event_detail_screen.dart';
++import 'package:elder_safety_mobile/ui/objects_screen.dart';
++import 'fakes.dart';
++import 'unified_alert_test.dart' show ContractRepository, alert;
++
++void main() {
++  testWidgets(
++    'one connection form has one origin/token and keeps advanced settings',
++    (t) async => withEmptyVideoHttp(() async {
++      t.view.physicalSize = const Size(420, 1000);
++      t.view.devicePixelRatio = 1;
++      addTearDown(t.view.resetPhysicalSize);
++      addTearDown(t.view.resetDevicePixelRatio);
++      final c = SafetyController(
++        store: MemorySettingsStore(),
++        videoApiFactory: emptyVideoApi,
++      );
++      await t.pumpWidget(ElderSafetyApp(controller: c));
++      await t.pumpAndSettle();
++      await t.tap(
++        find.descendant(
++          of: find.byType(NavigationBar),
++          matching: find.text('我的'),
++        ),
++      );
++      await t.pumpAndSettle();
++      await t.ensureVisible(find.text('连接服务'));
++      await t.pumpAndSettle();
++      await t.tap(find.text('连接服务'));
++      await t.pumpAndSettle();
++      expect(find.widgetWithText(TextField, '统一后端地址'), findsOneWidget);
++      expect(find.widgetWithText(TextField, '统一访问令牌'), findsOneWidget);
++      expect(find.text('安全后端（可选）'), findsNothing);
++      expect(find.text('录像服务地址'), findsNothing);
++      expect(find.text('检查连接'), findsOneWidget);
++      expect(find.text('保存连接'), findsOneWidget);
++      expect(t.takeException(), isNull);
++      await t.pumpWidget(const SizedBox.shrink());
++    }),
++  );
++
++  testWidgets(
++    'cold notification opens global alert detail with correct video offset',
++    (t) async => withEmptyVideoHttp(() async {
++      final repo = ContractRepository()
++        ..records = [
++          {
++            ...alert('a_video', 1, source: 'uploaded_recording'),
++            'evidence': [],
++          },
++        ]
++        ..revision = 1;
++      final c = SafetyController(
++        store: MemorySettingsStore()
++          ..settings = const AppSettings(
++            baseUrl: 'http://10.0.2.2:8000',
++            bearerToken: 'fixture',
++          ),
++        repositoryFactory: (_) => repo,
++        videoApiFactory: emptyVideoApi,
++      );
++      c.openAlert(
++        const AlertLocation(
++          backend: 'http://10.0.2.2:8000',
++          household: 'default',
++          alertId: 'a_video',
++          source: 'uploaded_recording',
++        ),
++      );
++      await t.pumpWidget(ElderSafetyApp(controller: c));
++      await t.pumpAndSettle();
++      expect(find.byType(EventDetailScreen), findsOneWidget);
++      await t.scrollUntilVisible(
++        find.byType(EvidenceVideo),
++        220,
++        scrollable: find
++            .descendant(
++              of: find.byType(EventDetailScreen),
++              matching: find.byType(Scrollable),
++            )
++            .first,
++      );
++      await t.pumpAndSettle();
++      final video = t.widget<EvidenceVideo>(find.byType(EvidenceVideo));
++      expect(video.startMs, 1200);
++      expect(video.playbackPath, '/media/videos/video-1');
++      expect(video.api.config.baseUrl, 'http://10.0.2.2:8000');
++      expect(find.text('标记已解决'), findsOneWidget);
++      expect(t.takeException(), isNull);
++      await t.pumpWidget(const SizedBox.shrink());
++    }),
++  );
++
++  testWidgets(
++    'foreign backend notification does not open same-named alert',
++    (t) async => withEmptyVideoHttp(() async {
++      final repo = ContractRepository()
++        ..records = [
++          {...alert('a_x', 1), 'evidence': []},
++        ]
++        ..revision = 1;
++      final c = SafetyController(
++        store: MemorySettingsStore()
++          ..settings = const AppSettings(
++            baseUrl: 'http://10.0.2.2:8000',
++            bearerToken: 'fixture',
++          ),
++        repositoryFactory: (_) => repo,
++        videoApiFactory: emptyVideoApi,
++      );
++      c.openAlert(
++        const AlertLocation(
++          backend: 'http://192.168.1.99:8000',
++          household: 'default',
++          alertId: 'a_x',
++          source: 'live_camera',
++        ),
++      );
++      await t.pumpWidget(ElderSafetyApp(controller: c));
++      await t.pumpAndSettle();
++      expect(find.byType(EventDetailScreen), findsNothing);
++      expect(find.text('这条通知属于其他后端或家庭，请切换到原连接后查看'), findsOneWidget);
++      expect(t.takeException(), isNull);
++      await t.pumpWidget(const SizedBox.shrink());
++    }),
++  );
++}
+diff --git a/mobile-app/test/video_alerts_integration_test.dart b/mobile-app/test/video_alerts_integration_test.dart
+--- a/mobile-app/test/video_alerts_integration_test.dart
++++ b/mobile-app/test/video_alerts_integration_test.dart
+@@ -191,11 +191,12 @@
+     },
+   );
+   test(
+-    'new video events notify once; initial history/reconnect do not flood notices',
++    'legacy compatibility: video notices do not flood on history or reconnect',
+     () async {
+       final fixture = VideoFixture();
+       final c = SafetyController(
+         store: MemorySettingsStore(),
++        repositoryFactory: (_) => live(),
+         videoApiFactory: fixture.api,
+       );
+       final notices = <EventNotice>[];
+@@ -224,14 +225,15 @@
+     },
+   );
+   test(
+-    'standalone video persists notification preferences without safety backend',
++    'unconfigured unified app persists local preferences without fabricated alerts',
+     () async {
+       final fixture = VideoFixture();
+       final store = MemorySettingsStore();
+       final c = SafetyController(store: store, videoApiFactory: fixture.api);
+       await c.initialize();
+       expect(c.devices, isEmpty);
+-      expect(c.error, isNull);
++      expect(c.error, contains('统一后端'));
++      expect(fixture.requests, isEmpty);
+       await c.saveFamilyPreferences(
+         const FamilyPreferences(
+           escalationSeconds: 60,
+@@ -257,6 +259,7 @@
+       final fixture = VideoFixture()..acceptAck = false;
+       final c = SafetyController(
+         store: MemorySettingsStore(),
++        repositoryFactory: (_) => live(),
+         videoApiFactory: fixture.api,
+       );
+       addTearDown(c.dispose);
+@@ -274,6 +277,7 @@
+       final fixture = VideoFixture();
+       final c = SafetyController(
+         store: MemorySettingsStore(),
++        repositoryFactory: (_) => live(),
+         videoApiFactory: fixture.api,
+       );
+       addTearDown(c.dispose);
+diff --git a/mobile-app/assets/manual.json b/mobile-app/assets/manual.json
+--- a/mobile-app/assets/manual.json
++++ b/mobile-app/assets/manual.json
+@@ -19,7 +19,7 @@
+           "paragraphs": [
+             "首页：家庭概览、在线设备数、待回应与处理中计数、最近同步时间、三项守护入口、重点事件、最近设备与视频快捷入口。计数来自已加载数据，不代表全量或全天统计。",
+             "成员监护：新建、编辑、删除档案，默认编号，关系与备注，设备/轨迹绑定，按成员查看人物事件，手动关联事件，家庭联系人并列管理。家中风险：明火/火花等环境记录筛选和待处理概览。物品寻找：搜索框、最近搜索、录像选择、最近物品历史、时间线、证据图片与视频。",
+-            "视频功能：局域网 RTSP 直播、已有 MP4 上传及取消、录像库、原片播放、安全分析、物体追踪、任务进度/暂停/继续、危险告警确认、事件分类、时间定位、记录问答、完整工作台及录像删除。设置功能：两类服务连接、联系人、通知权限与渠道、开源许可。照片分析已移除。"
++            "视频功能：局域网 RTSP 直播、已有 MP4 上传及取消、录像库、原片播放、安全分析、物体追踪、任务进度/暂停/继续、危险告警确认、事件分类、时间定位、记录问答、完整工作台及录像删除。设置功能：统一服务连接、联系人、通知权限与渠道、开源许可。照片分析已移除。"
+           ]
+         }
+       ]
+@@ -39,7 +39,7 @@
+         {
+           "title": "连接后完成一次视频分析",
+           "paragraphs": [
+-            "第一步：启动电脑原项目的后端，并确认模型已配置。第二步：手机与电脑加入可互通的局域网。第三步：我的 → 连接服务，填写录像服务地址和所需令牌，检查连接后保存。",
++            "第一步：由后端负责人使用 start-phone 启动统一服务。第二步：手机与电脑加入可互通的局域网。第三步：我的 → 连接服务，只填写一个统一后端根地址和统一访问令牌（APP_LAN_TOKEN），检查连接后保存。内部安全服务由电脑管理，手机无需填写第二个地址。",
+             "第四步：首页 → 上传视频 → 选择并上传 MP4 视频。等待上传与服务端准备完成，选择录像。第五步：按需要选“安全分析”或“物体追踪”，手动开始任务。第六步：查看结果，定位原片，或回到物品寻找查询录像线索。",
+             "如果只想看实时画面：首页 → 实时摄像头 → 输入设备本地参数 → 保存并连接实时画面；这一操作不要求先启动视频分析后端。"
+           ]
+@@ -192,8 +192,8 @@
+         {
+           "title": "查看危险告警",
+           "paragraphs": [
+-            "导入视频页的危险事件区域展示后端生成的告警，可以定位原片并点击“我已知悉”。这项确认不同于完成现场处置。",
+-            "服务端视频告警同步到消息与相关功能页后，可查看其当前处理状态。安全服务事件提供“我已收到”和“标记已解决”；不同来源的操作以详情实际展示的按钮为准。"
++            "导入视频页的危险事件区域保留原录像分析记录。点击“查看并处理统一告警”，打开统一中心已经复核确认的对应告警；未复核候选不会作为确认危险提醒。",
++            "两类来源的统一告警都支持“我已收到”和“标记已解决”。操作后读取服务端返回的处理状态，其他手机刷新后同步。复核状态、处理状态与通知提供商状态分别显示；来源已撤销的记录保留历史并停止处理入口。"
+           ]
+         }
+       ]
+@@ -260,9 +260,9 @@
+         {
+           "title": "通知管理",
+           "paragraphs": [
+-            "我的 → 通知管理，可切换家庭事件提醒，查看 Android 13+ 通知权限、应用通知总开关、居家危险提醒渠道及推送状态。可申请权限或打开相应系统设置，修改后刷新状态。",
+-            "App 在前台自动刷新事件，并在权限、渠道与家庭提醒均开启时发送系统通知；也保留应用内提示，点击提示或通知可打开事件。",
+-            "当前录像服务尚未实现后台视频推送。安全后端后台及锁屏推送需要 Firebase 与服务端配置，本地交付包未启用 Firebase；不能保证 App 关闭后仍及时送达。"
++            "我的 → 通知管理可查看和设置 Android 通知权限、总开关与渠道，保留系统设置跳转。",
++            "统一告警的前台通知模块与后台推送由团队通知负责人单独接入。业务层只提供一条成功同步的数据流，不会重复轮询或另造通知。",
++            "当前业务补丁不代表通知已送达。后台、锁屏以及两部真手机的送达与点击效果仍需单独验收，不能用模拟器或单元测试代替。"
+           ]
+         }
+       ]
+@@ -272,12 +272,12 @@
+       "title": "服务地址、模型与费用",
+       "sections": [
+         {
+-          "title": "两类服务怎样配置",
+-          "paragraphs": [
+-            "我的 → 连接服务。“录像服务”填写原项目视频后端根地址，一般为 http://电脑局域网IP:8000，并按网关要求填写访问令牌；不要将摄像头 RTSP 地址填在这里。点击检查连接，确认后保存。",
+-            "电脑 Android 模拟器访问本机视频后端可用 http://10.0.2.2:8000。真机需使用电脑当前的局域网 IPv4 地址；127.0.0.1 指向手机或模拟器自身，不能用于连接电脑后端。",
+-            "“安全后端”是可选的独立告警与联系人服务，使用它自己的根地址和用户令牌（原项目常见端口 8010，以实际运行配置为准）。令牌为空时不启用这一路服务，录像功能可以单独使用。",
+-            "高级设置可修改前台刷新间隔，有效范围 5–300 秒。电脑后端需要监听可访问的网卡，主机白名单、令牌和 Windows 防火墙也需允许所用客户端；本次 App 更新不会改变这些设置。"
++          "title": "统一后端怎样配置",
++          "paragraphs": [
++            "我的 → 连接服务，填写统一后端根地址，例如 http://电脑局域网IP:8000，并填写后端负责人配置的 APP_LAN_TOKEN 原文。不要加 Bearer 前缀，也不要填大模型 API Key。点击检查连接，再保存。",
++            "电脑 Android 模拟器访问本机用 http://10.0.2.2:8000；真实手机使用电脑当前可互通的局域网 IPv4 地址。127.0.0.1 指向手机或模拟器自身。",
++            "录像、统一告警、受控证据、设备与联系人都经同一个根地址访问。电脑内部的 8010 服务不需要向手机公开，也不需要第二套用户令牌。旧版双地址配置会迁移，请核对统一访问令牌后保存。",
++            "高级设置保留手机联系人角色和 5–300 秒前台刷新间隔。检查连接成功与模型就绪分别显示；模型未就绪时需要后端负责人处理。"
+           ]
+         },
+         {
+@@ -297,7 +297,7 @@
+         {
+           "title": "数据放在哪里",
+           "paragraphs": [
+-            "摄像头连接参数、服务令牌、成员档案、绑定、事件手动归属与最近搜索保存在本机存储；敏感连接配置使用安全存储。服务端视频、分析和证据保存在所配置电脑服务中。",
++            "摄像头参数、统一服务令牌、成员档案、绑定和搜索历史保存在手机安全存储中；完整告警镜像和对应游标一起保存，并按后端/家庭区分。视频、任务、统一告警处理状态与证据保存在电脑后端。",
+             "相同签名、相同应用 ID 的较新版本可覆盖升级并沿用本机数据。卸载 App、清除存储、切换独立模拟器或不同应用 ID，不能自动带入旧数据；当前没有成员档案导出、跨手机云同步或跨服务数据迁移功能。",
+             "本版另外保存 APK 与源码，不会更改旧版安装包。源码交付排除正式签名密钥、真实令牌和设备密码。"
+           ]

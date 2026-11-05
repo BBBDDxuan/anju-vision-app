@@ -1,0 +1,145 @@
+{
+  "date": "2026-11-04",
+  "role": "B",
+  "baseline_app_commit": "e85049da4ec702c74d84d2a46473dcf813985b78",
+  "baseline_source_sha256": "808db9bad2850be6f0381a502ad05f77e43008e9add9623ff509385f2ecf4216",
+  "backend_commit": "d272b8737ddd59a33e66b79ef120e60bf6d2be6b",
+  "contract_version": "2026-11-04.v1",
+  "changes": [
+    {
+      "path": "mobile-app/lib/app.dart",
+      "status": "modified",
+      "sha256": "0e16e4c5f9545f9a2ac2e45a15f8d102491f8ef3c4100e77aa117e2afbb9646b"
+    },
+    {
+      "path": "mobile-app/lib/app_controller.dart",
+      "status": "modified",
+      "sha256": "b5d8657686fee2e8316b9a8ef13d03f5f28d0428f07f6fb2f01cde3d1bdd9dd0"
+    },
+    {
+      "path": "mobile-app/lib/models/models.dart",
+      "status": "modified",
+      "sha256": "08f282302e3fa82b6341822318cd89006851e1b2bb81ab4769e2bc7e4333f1e9"
+    },
+    {
+      "path": "mobile-app/lib/models/unified_alert.dart",
+      "status": "new",
+      "sha256": "44b0ab3c5d3ee3a89f92e7611b3d89da8f2a5a3350ee77df54176bfda8a79211"
+    },
+    {
+      "path": "mobile-app/lib/services/api.dart",
+      "status": "modified",
+      "sha256": "42a287f2177cb8388bde90e767ed87250249c90766745055d17ad2321e7e5ded"
+    },
+    {
+      "path": "mobile-app/lib/services/object_api.dart",
+      "status": "modified",
+      "sha256": "83d1c20bcf326372a36c98e9041e33cbcd004262bb465b6f90ec1fd34acc0ca3"
+    },
+    {
+      "path": "mobile-app/lib/services/settings_store.dart",
+      "status": "modified",
+      "sha256": "c5b4c9bf38ab2abe458ffd205c78449595d355592b5ccb33c5d26b3bd48b0fef"
+    },
+    {
+      "path": "mobile-app/lib/ui/devices_screen.dart",
+      "status": "modified",
+      "sha256": "3b938dc8830b5f47d2b3cf469610f0ebbc6320ebde8c0f35dfd64fa27c32b041"
+    },
+    {
+      "path": "mobile-app/lib/ui/event_detail_screen.dart",
+      "status": "modified",
+      "sha256": "471f72039e584f9b261cdd21baeed939d93237caf3459eb852f59f1a220b0ce6"
+    },
+    {
+      "path": "mobile-app/lib/ui/history_screen.dart",
+      "status": "modified",
+      "sha256": "517b55dced206db366d1f59f90f12afeb29d263e52610095d17fd7f63532c1eb"
+    },
+    {
+      "path": "mobile-app/lib/ui/home_screen.dart",
+      "status": "modified",
+      "sha256": "95f863a4c72ede648e2616dce7cbb755cb4e17b10ddb668a531898f156c28d3a"
+    },
+    {
+      "path": "mobile-app/lib/ui/members_screen.dart",
+      "status": "modified",
+      "sha256": "8664bdd3b7c8275ad5625b4ab45ffa3cc4f248a951db79416998981fe2f2bd13"
+    },
+    {
+      "path": "mobile-app/lib/ui/objects_screen.dart",
+      "status": "modified",
+      "sha256": "c4047309a7bc3fd1285f5038e80c7406b75085278a93224fe0759a2a59001e8f"
+    },
+    {
+      "path": "mobile-app/lib/ui/risks_screen.dart",
+      "status": "modified",
+      "sha256": "ae72e28cc0a4c40568bd64c2d57854db276fd0dcfa8efa144c34d8c25015e62d"
+    },
+    {
+      "path": "mobile-app/lib/ui/settings_screen.dart",
+      "status": "modified",
+      "sha256": "cb673f5eff5abe10e745cd6f0649ea2d2100a0001b2d0812cee5967839362be9"
+    },
+    {
+      "path": "mobile-app/lib/ui/video_workspace_screen.dart",
+      "status": "modified",
+      "sha256": "02b570e187b8f236472426dd77ab16703636d1e7a258b152bd9a4e858fd35553"
+    },
+    {
+      "path": "mobile-app/lib/ui/widgets.dart",
+      "status": "modified",
+      "sha256": "5ad1ce9f50af548c8301848f16e2a97e3edcea9d7d35f1ad4a3517e950197d13"
+    },
+    {
+      "path": "mobile-app/test/controller_test.dart",
+      "status": "modified",
+      "sha256": "31143b3c82af9630afa42dd5c6e33b2853739b7cffb2a93219a81794474d4f9c"
+    },
+    {
+      "path": "mobile-app/test/models_test.dart",
+      "status": "modified",
+      "sha256": "a2014072d833ed92c57efe4dbcbbf8697227ec931a5215dcfef5330d842a7825"
+    },
+    {
+      "path": "mobile-app/test/phone_contract_http_test.dart",
+      "status": "new",
+      "sha256": "b79bf8801b12cb035a96c3f6e10e614c894ef4798a20aa9a4b75fcceea57a737"
+    },
+    {
+      "path": "mobile-app/test/support/phone_contract_fixture.py",
+      "status": "new",
+      "sha256": "22cba1fc4ad83a5b9321da0909865ab3266e1a98569659c79aa459ba3961134a"
+    },
+    {
+      "path": "mobile-app/test/unified_alert_test.dart",
+      "status": "new",
+      "sha256": "ae2a2b221312263cbc49460d995dc045e32725340f1f362e5003acb13012ee93"
+    },
+    {
+      "path": "mobile-app/test/unified_app_test.dart",
+      "status": "new",
+      "sha256": "5a8120e463c782fac06d91405f6752ecf10670ee20e1b6920b7e5abd53a5ac41"
+    },
+    {
+      "path": "mobile-app/test/video_alerts_integration_test.dart",
+      "status": "modified",
+      "sha256": "2e00388a92c3352849d4fcc50e008165108113a4116797625012a3a42b8d6277"
+    },
+    {
+      "path": "mobile-app/assets/manual.json",
+      "status": "modified",
+      "sha256": "648e9b330eb023d0ae02fd149fca2335d79fa05a92dcc236af707b3403ebde94"
+    }
+  ],
+  "protected_baseline_files_unchanged": true,
+  "backend_worktree_clean": true,
+  "tests_passed": 75,
+  "tests_skipped": 2,
+  "real_phone_acceptance": "not executed",
+  "notification_module": "C pending",
+  "apk_build": "C responsibility, not built by B",
+  "patch_applies_to_clean_source": true,
+  "publication_scope": "docs/b-app/** only: business source distributed as patch and overlay archive; complete C source baseline not imported",
+  "publication_branch": "codex/b-app-business"
+}

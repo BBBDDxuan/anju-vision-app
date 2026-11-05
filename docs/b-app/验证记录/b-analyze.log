@@ -1,0 +1,6 @@
+Analyzing b-app-business...                                     
+
+   info - 'onTokenRefresh' is deprecated and shouldn't be used. Use onRegistered instead. Try replacing the use of the deprecated member with the replacement - lib\services\push_service.dart:80:19 - deprecated_member_use
+   info - 'getToken' is deprecated and shouldn't be used. Use register() and onRegistered instead. Try replacing the use of the deprecated member with the replacement - lib\services\push_service.dart:140:35 - deprecated_member_use
+
+2 issues found. (ran in 8.1s)

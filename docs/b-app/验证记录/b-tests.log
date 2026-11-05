@@ -1,0 +1,83 @@
+00:00 +0: loading D:/AndroidDev/b-app-business/test/android_notices_test.dart
+00:00 +0: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification bridge reads permission results and opens native settings
+00:00 +1: D:/AndroidDev/b-app-business/test/api_test.dart: all user routes use Bearer; health is public; contract bodies match
+00:00 +2: D:/AndroidDev/b-app-business/test/api_test.dart: all user routes use Bearer; health is public; contract bodies match
+00:00 +3: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +4: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +5: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +6: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +7: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +8: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +9: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +10: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +11: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +12: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +13: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +14: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +15: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +16: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +17: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +18: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +19: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +20: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:00 +21: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +22: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +23: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +24: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +25: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +26: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +27: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +28: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +29: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +30: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +31: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +32: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +33: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +34: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +35: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +36: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:01 +36: D:/AndroidDev/b-app-business/test/original_service_test.dart: live original backend query, memory, replay, frame and video address
+  Skip: Run only against tool/original_api_fixture.py
+00:01 +36 ~1: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:02 +37 ~1: D:/AndroidDev/b-app-business/test/android_notices_test.dart: notification sheet refreshes after permission and settings round trip
+00:02 +38 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +39 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +40 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +41 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +42 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +43 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +44 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +45 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +46 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +47 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +48 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +49 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +50 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:02 +51 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +52 ~1: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +52 ~1: D:/AndroidDev/b-app-business/test/video_alerts_integration_test.dart: original backend safety API, evidence frame and acknowledgement roundtrip
+  Skip: Requires isolated original backend fixture
+00:03 +52 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +53 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +54 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +55 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +56 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +57 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +58 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +59 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +60 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +61 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +62 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:03 +63 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:04 +64 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:06 +65 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:06 +66 ~2: D:/AndroidDev/b-app-business/test/navigation_manual_test.dart: devices keep camera and video routes; My keeps members and manual
+00:06 +67 ~2: D:/AndroidDev/b-app-business/test/product_test.dart: three areas separate events and support object search
+00:06 +68 ~2: D:/AndroidDev/b-app-business/test/product_test.dart: three areas separate events and support object search
+00:06 +69 ~2: D:/AndroidDev/b-app-business/test/unified_app_test.dart: cold notification opens global alert detail with correct video offset
+00:07 +70 ~2: D:/AndroidDev/b-app-business/test/unified_app_test.dart: cold notification opens global alert detail with correct video offset
+00:07 +71 ~2: D:/AndroidDev/b-app-business/test/product_test.dart: member profile can be edited from its card
+00:07 +72 ~2: D:/AndroidDev/b-app-business/test/product_test.dart: member profile can be edited from its card
+00:08 +73 ~2: D:/AndroidDev/b-app-business/test/product_test.dart: small display with large text and tablet remain usable
+00:09 +74 ~2: D:/AndroidDev/b-app-business/test/product_test.dart: camera workspace is usable on a small display and has no photo analysis
+00:09 +75 ~2: All tests passed!
