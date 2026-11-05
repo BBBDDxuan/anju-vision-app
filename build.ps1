@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$ToolsRoot = '',
     [ValidateSet('release', 'debug')][string]$Configuration = 'release',
@@ -14,6 +14,29 @@ if (-not $ToolsRoot) {
     $ToolsRoot = if ($env:ANJU_ANDROID_TOOLS_ROOT) { $env:ANJU_ANDROID_TOOLS_ROOT } else { 'D:\AndroidDev' }
 }
 $ToolsRoot = [IO.Path]::GetFullPath($ToolsRoot)
+# The bundled AOT snapshotter cannot read Unicode paths on this Windows setup.
+# Use temporary ASCII aliases for the same physical checkout, never a source copy.
+if ($PSScriptRoot -match '[^\x00-\x7f]' -or $ToolsRoot -match '[^\x00-\x7f]') {
+    $occupied = @([IO.DriveInfo]::GetDrives() | ForEach-Object { $_.Name.TrimEnd('\') })
+    $available = @('Z:', 'Y:', 'X:', 'W:', 'V:', 'U:', 'T:', 'S:', 'R:', 'Q:' | Where-Object { $_ -notin $occupied })
+    if ($available.Count -lt 2) { throw 'Two unused drive letters are required for the Unicode-path workaround.' }
+    $toolsDrive = $available[0]
+    $repositoryDrive = $available[1]
+    $callerLocation = Get-Location
+    $previousToolsRoot = $env:ANJU_ANDROID_TOOLS_ROOT
+    $env:ANJU_ANDROID_TOOLS_ROOT = $ToolsRoot
+    try {
+        . (Join-Path $mobileRoot 'tool\ascii-env.ps1') -ToolsDrive $toolsDrive -RepositoryDrive $repositoryDrive
+        & ($repositoryDrive + '\build.ps1') -ToolsRoot ($toolsDrive + '\') -Configuration $Configuration -TargetPlatform $TargetPlatform -WithFirebase:$WithFirebase -ExpectedSigningSha256 $ExpectedSigningSha256
+    } finally {
+        Set-Location -LiteralPath $callerLocation.Path
+        # Only aliases created above, after proving both letters were unoccupied.
+        & subst.exe $repositoryDrive /D
+        & subst.exe $toolsDrive /D
+        $env:ANJU_ANDROID_TOOLS_ROOT = $previousToolsRoot
+    }
+    return
+}
 $env:FLUTTER_ROOT = Join-Path $ToolsRoot 'flutter'
 $env:JAVA_HOME = Join-Path $ToolsRoot 'jdk'
 $env:ANDROID_HOME = Join-Path $ToolsRoot 'sdk'

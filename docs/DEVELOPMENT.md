@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 产物：`mobile-app/build/app/outputs/flutter-apk/`。报告：`mobile-app/build/BUILD-RESULTS.json`。正式分架构包带 Android ABI 版本号偏移，本版 ARM64 实际版本号为 `6010`。
 
-若本机 Android 工具链仍因中文路径失败，可调用既有 `tool/ascii-env.ps1` 把同一物理仓库映射为 ASCII 盘符；这是路径别名而非源码副本。只在出现实际路径问题时使用，并核对映射目标。
+本机 AOT 编译器已实际复现中文路径读取失败。构建入口会在检测到中文路径时调用既有 `tool/ascii-env.ps1`，选择两个未占用的盘符，为同一物理仓库和工具建立临时 ASCII 别名，构建结束自动移除。源码和产物仍在本仓库，不创建另一份源码；已占用盘符不会被覆盖。
 
 ## 结构与资料分层
 
@@ -74,6 +74,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 ## 后端配套
 
-本次只上传 App 仓库。电脑端另有本地诊断日志、主机白名单启动参数修改，属于 `anju-vision-website` 仓库，不会随 App 推送。新监护、更新接口需要后端具备对应实现，否则 App 会提示请求失败；不要将 APK 更新等同于后端更新。
+本次只上传 App 仓库。电脑端另有本地诊断日志、主机白名单启动参数修改，属于 `anju-vision-website` 仓库，不会随 App 推送。本机当前 `/api/monitoring/camera` 与 `/api/app/version` 实测均返回 404，需要另行同步配套后端；不要将 APK 更新等同于后端更新。
 
 上传误报修正用于显示真实错误，不能代替处理视频旋转、格式或 FFprobe 的实际问题。尚需用之前失败的视频进行手机真机入库验收。
