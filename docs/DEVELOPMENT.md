@@ -77,3 +77,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 本次只上传 App 仓库。电脑端另有本地诊断日志、主机白名单启动参数修改，属于 `anju-vision-website` 仓库，不会随 App 推送。本机当前 `/api/monitoring/camera` 与 `/api/app/version` 实测均返回 404，需要另行同步配套后端；不要将 APK 更新等同于后端更新。
 
 上传误报修正用于显示真实错误，不能代替处理视频旋转、格式或 FFprobe 的实际问题。尚需用之前失败的视频进行手机真机入库验收。
+
+## 本轮实际验证
+
+2026-11-05，在本仓库运行根目录 `build.ps1` 完成：
+
+- 锁定依赖恢复、PowerShell 解析、源码/通知配置检查通过。
+- Dart/Flutter 分析通过，仍有两条原 Firebase API 弃用提示。
+- Flutter 自动化测试 117 项通过，4 项需独立 HTTP 夹具的测试跳过。
+- ARM64 Release 构建成功，原签名已验证；版本为 1.2.5，实际 Android versionCode 为 6010。
+- 源码与产物均位于本仓库；构建结束已清理临时 ASCII 盘符。
+- 当前手机真机覆盖升级、此前失败视频的入库仍未验收；本机后端新增监护与更新接口尚需配套同步。
+
+构建来源提交、APK 哈希及签名记录见 `MAIN-INTEGRATION-20261105.json`。之后新增的文档提交不改变本次编译的 App 业务源码。

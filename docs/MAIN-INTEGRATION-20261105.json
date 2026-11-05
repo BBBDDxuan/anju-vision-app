@@ -1,0 +1,27 @@
+{
+  "remote_main_before_integration": "22c7a8c",
+  "local_upload_fix_commit": "4a02037",
+  "built_source_commit": "07b386551de80f9ac8a861d60009f359426037f6",
+  "version": "1.2.5+4010",
+  "android_arm64_version_code": 6010,
+  "flutter_tests_passed": 117,
+  "flutter_fixture_tests_skipped": 4,
+  "analysis_passed": true,
+  "existing_firebase_api_deprecation_infos": 2,
+  "firebase_enabled": false,
+  "artifacts": [
+    {
+      "sha256": "e5741f20cb80910c11303f28c14ebb3655db2084d01ca7ace864e08349f999a0",
+      "bytes": 69119975,
+      "original_signer_verified": true,
+      "abi": "arm64-v8a",
+      "certificate_sha256": "2472d43f63dbea0d2d3c34933114caf3dc532055c97ceaa40e96a968070b3e35",
+      "file": "app-arm64-v8a-release.apk"
+    }
+  ],
+  "real_phone_upgrade_tested": false,
+  "previous_failing_phone_video_ingestion_verified": false,
+  "local_backend_monitoring_and_updater_routes": "Both returned 404; matching backend update is still required",
+  "repository_build_entrypoint": "build.ps1",
+  "temporary_ascii_aliases_removed": true
+}
