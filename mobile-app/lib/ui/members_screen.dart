@@ -366,7 +366,7 @@ class _MemberEditorState extends State<_MemberEditor> {
         title: const Text('删除这个成员档案？'),
         content: Text(
           widget.controller.usesSharedMembers
-              ? '删除电脑中的共享档案和全部人脸资料，其他手机同步后也将移除。安全事件会保留。'
+              ? '删除电脑中的共享档案及关联资料，其他手机同步后也将移除。安全事件会保留。'
               : '删除本机档案、绑定和人工关联，安全事件会保留。',
         ),
         actions: [
@@ -416,6 +416,15 @@ class _MemberEditorState extends State<_MemberEditor> {
         ),
         const SizedBox(height: 18),
         TextField(
+          controller: _name,
+          maxLength: 80,
+          decoration: InputDecoration(
+            labelText: '称呼（留空使用默认编号）',
+            hintText: '成员${widget.member.number}',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
           controller: _letter,
           maxLength: 2,
           decoration: const InputDecoration(labelText: '字母或简写（留空使用名称首字）'),
@@ -444,14 +453,6 @@ class _MemberEditorState extends State<_MemberEditor> {
           ],
         ),
         const SizedBox(height: 12),
-        TextField(
-          controller: _name,
-          maxLength: 80,
-          decoration: InputDecoration(
-            labelText: '称呼（留空使用默认编号）',
-            hintText: '成员${widget.member.number}',
-          ),
-        ),
         const SizedBox(height: 14),
         TextField(
           controller: _relation,
