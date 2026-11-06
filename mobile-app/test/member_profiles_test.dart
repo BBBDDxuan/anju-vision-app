@@ -173,8 +173,21 @@ void main() {
           'face_identity': {'status': 'matched'},
         },
       });
-      expect(c.memberIdFor(identified), 'server-1');
-      expect(c.associationLabel(identified), contains('请核对'));
+      expect(c.memberIdFor(identified), isNull);
+      final manual = SafetyEvent.fromJson({
+        ...event.toJson(),
+        'details': {
+          'member_id': 'server-1',
+          'manual_association': {
+            'status': 'member',
+            'provenance': 'manual',
+            'member_id': 'server-1',
+            'label': '奶奶（人工关联）',
+          },
+        },
+      });
+      expect(c.memberIdFor(manual), 'server-1');
+      expect(c.associationLabel(manual), '人工关联');
       await c.associateMember(identified, null);
       expect(c.memberIdFor(identified), isNull);
       await c.saveMember(c.members.single.copyWith(name: '王奶奶'));

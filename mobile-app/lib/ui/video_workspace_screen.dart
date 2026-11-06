@@ -12,6 +12,7 @@ import '../services/object_api.dart';
 import 'objects_screen.dart' show EvidenceFrame, ObjectReplayScreen;
 import 'web_workspace_screen.dart';
 import 'widgets.dart';
+import 'manual_tracks_panel.dart';
 
 class VideoWorkspaceScreen extends StatefulWidget {
   const VideoWorkspaceScreen({
@@ -155,6 +156,15 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
     } catch (e) {
       if (mounted && sequence == _sequence) setState(() => _error = '$e');
     }
+  }
+
+  Future<void> _refreshManualAlerts() async {
+    final id = _selected, sequence = _sequence;
+    if (id == null) return;
+    try {
+      final payload = await _api.getJson('${_api.videoPath(id)}/alerts');
+      if (mounted && sequence == _sequence) setState(() => _alerts = (payload['alerts'] as List? ?? []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+    } catch (_) {}
   }
 
   Future<void> _readResults(String id, int sequence) async {
@@ -618,6 +628,15 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
                   ],
                 ),
               ),
+              if (!_cloud)
+                ManualTracksPanel(
+                  key: ValueKey('manual-${selected.id}'),
+                  controller: widget.controller,
+                  videoId: selected.id,
+                  active: widget.active && _foreground,
+                  positionMs: () => _player?.value.position.inMilliseconds ?? 0,
+                  onChanged: () => unawaited(_refreshManualAlerts()),
+                ),
               const SectionTitle('选择分析任务'),
               Wrap(
                 spacing: 10,
@@ -757,6 +776,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
                         alert['title']?.toString() ?? '危险候选',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
+                      Text((alert['manual_association'] as Map?)?['label']?.toString() ?? '未知成员'),
                       Text(
                         '片内 ${videoClock((alert['start_ms'] as num?) ?? 0)} · ${alert['acknowledged'] == true ? '已知悉' : '待核实'}',
                         style: const TextStyle(fontSize: 12, color: Anju.muted),

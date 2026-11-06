@@ -27,11 +27,20 @@ class MemberProfile {
     this.name = '',
     this.relationship = '',
     this.notes = '',
+    this.avatarDataUrl = '',
+    this.labelColor = '#237e7b',
+    this.labelLetter = '',
     this.bindings = const [],
     this.faceSampleCount = 0,
     this.revision = 0,
   });
-  final String id, name, relationship, notes;
+  final String id,
+      name,
+      relationship,
+      notes,
+      avatarDataUrl,
+      labelColor,
+      labelLetter;
   final int number, faceSampleCount, revision;
   final List<MemberBinding> bindings;
   String get displayName => name.trim().isEmpty ? '成员$number' : name.trim();
@@ -41,6 +50,9 @@ class MemberProfile {
     'name': name,
     'relationship': relationship,
     'notes': notes,
+    'label_color': labelColor,
+    'label_letter': labelLetter,
+    if (avatarDataUrl.isNotEmpty) 'avatar_data_url': avatarDataUrl,
     'bindings': bindings.map((e) => e.toJson()).toList(),
     'face_sample_count': faceSampleCount,
     'revision': revision,
@@ -53,6 +65,9 @@ class MemberProfile {
     name: field(j, 'name'),
     relationship: field(j, 'relationship'),
     notes: field(j, 'notes'),
+    labelColor: field(j, 'label_color', '#237e7b'),
+    labelLetter: field(j, 'label_letter'),
+    avatarDataUrl: field(j, 'avatar_data_url'),
     bindings: (j['bindings'] as List? ?? [])
         .map((e) => MemberBinding.fromJson(Map<String, dynamic>.from(e)))
         .toList(),
@@ -61,6 +76,9 @@ class MemberProfile {
     String? name,
     String? relationship,
     String? notes,
+    String? avatarDataUrl,
+    String? labelColor,
+    String? labelLetter,
     List<MemberBinding>? bindings,
     int? faceSampleCount,
     int? revision,
@@ -70,6 +88,9 @@ class MemberProfile {
     name: name ?? this.name,
     relationship: relationship ?? this.relationship,
     notes: notes ?? this.notes,
+    avatarDataUrl: avatarDataUrl ?? this.avatarDataUrl,
+    labelColor: labelColor ?? this.labelColor,
+    labelLetter: labelLetter ?? this.labelLetter,
     bindings: bindings ?? this.bindings,
     faceSampleCount: faceSampleCount ?? this.faceSampleCount,
     revision: revision ?? this.revision,

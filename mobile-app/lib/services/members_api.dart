@@ -47,7 +47,7 @@ class MembersApi {
         final response = await _client.send(request);
         final bytes = <int>[];
         await for (final chunk in response.stream) {
-          if (bytes.length + chunk.length > 1024 * 1024)
+          if (bytes.length + chunk.length > 2 * 1024 * 1024)
             throw const ApiException('成员服务返回内容过大');
           bytes.addAll(chunk);
         }
@@ -69,6 +69,9 @@ class MembersApi {
             'FACE_IMAGE_DIMENSIONS': '照片像素过大，请缩小后重试',
             'HOUSEHOLD_REVISION_CONFLICT': '档案已被其他设备修改，请刷新后重新编辑',
             'HOUSEHOLD_MEMBER_LIMIT': '家庭成员已达 32 人上限，请先整理已有档案',
+            'HOUSEHOLD_AVATAR_SIZE': '请选择不超过 2 MiB 的 JPEG 或 PNG 头像',
+            'HOUSEHOLD_AVATAR_INVALID': '头像无法读取或像素过大，请更换 JPEG/PNG 图片',
+            'HOUSEHOLD_AVATAR_TYPE': '请选择 JPEG 或 PNG 头像',
             'FACE_MODEL_INTEGRITY': '电脑人脸模型校验失败，请按后端说明重新准备模型',
             'FACE_MODEL_RUNTIME': '电脑人脸识别环境不可用，请检查后端配置',
             'FACE_SAMPLE_LIMIT': '该成员照片数量已达上限，请先清除旧人脸资料',
@@ -101,7 +104,41 @@ class MembersApi {
 
   String path(String id) => '/api/household/members/${Uri.encodeComponent(id)}';
   Future<MemberProfile> save(MemberProfile member) async {
-    final result = await request('PUT', path(member.id), json: member.toJson());
+    final body = member.toJson()..remove('avatar_data_url');
+    final result = await request('PUT', path(member.id), json: body);
+    return MemberProfile.fromJson(Map<String, dynamic>.from(result['member']));
+  }
+
+  Future<MemberProfile> saveAvatar(
+    MemberProfile member,
+    Uint8List? image,
+  ) async {
+    String? type;
+    if (image != null) {
+      if (image.isEmpty || image.length > 2 * 1024 * 1024) {
+        throw const ApiException('请选择不超过 2 MiB 的 JPEG 或 PNG 头像');
+      }
+      if (image.length >= 8 &&
+          image[0] == 137 &&
+          image[1] == 80 &&
+          image[2] == 78 &&
+          image[3] == 71) {
+        type = 'image/png';
+      } else if (image.length >= 3 &&
+          image[0] == 255 &&
+          image[1] == 216 &&
+          image[2] == 255) {
+        type = 'image/jpeg';
+      } else {
+        throw const ApiException('请选择 JPEG 或 PNG 头像');
+      }
+    }
+    final result = await request(
+      image == null ? 'DELETE' : 'PUT',
+      '${path(member.id)}/avatar?revision=${member.revision}',
+      image: image,
+      imageType: type,
+    );
     return MemberProfile.fromJson(Map<String, dynamic>.from(result['member']));
   }
 

@@ -732,16 +732,11 @@ class SafetyController extends ChangeNotifier {
       if (_disposed || generation != _generation || mutation != _memberMutation)
         return;
       await _acceptRemoteMembers(value, generation, mutation: mutation);
-      try {
-        final status = await api.status();
-        if (!_disposed &&
-            generation == _generation &&
-            mutation == _memberMutation)
-          faceStatus = status;
-      } catch (_) {
-        if (!_disposed && generation == _generation)
-          faceStatus = const {'ready': false};
-      }
+      faceStatus = const {
+        'enabled': false,
+        'ready': false,
+        'mode': 'manual_labels',
+      };
     } catch (e) {
       if (!_disposed &&
           generation == _generation &&
@@ -806,6 +801,18 @@ class SafetyController extends ChangeNotifier {
         ),
       );
     }
+  }
+
+  Future<void> saveMemberAvatar(String id, Uint8List? image) async {
+    final member = memberById(id);
+    if (member == null) throw const ApiException('成员档案已不存在，请刷新');
+    final api = _requireMembersApi(), generation = _generation;
+    ++_memberMutation;
+    final saved = await api.saveAvatar(member, image);
+    if (_disposed || generation != _generation) return;
+    ++_memberMutation;
+    final updated = members.map((m) => m.id == saved.id ? saved : m).toList();
+    await _acceptRemoteMembers(updated, generation);
   }
 
   Future<void> enrollMemberFace(
@@ -911,10 +918,10 @@ class SafetyController extends ChangeNotifier {
       return;
     }
     await _updateHousehold((data) {
-      if (member.displayName.length > 40 ||
-          member.relationship.length > 30 ||
-          member.notes.length > 500)
-        throw const ApiException('姓名最多 40 字，关系最多 30 字，备注最多 500 字');
+      if (member.displayName.length > 80 ||
+          member.relationship.length > 80 ||
+          member.notes.length > 2000)
+        throw const ApiException('姓名和关系最多 80 字，备注最多 2000 字');
       if (!data.members.any((m) => m.id == member.id))
         throw const ApiException('成员档案已不存在，请刷新');
       for (final b in member.bindings) {
@@ -967,11 +974,17 @@ class SafetyController extends ChangeNotifier {
 
   String? memberIdFor(SafetyEvent event) {
     final key = eventAssociationKey(event);
-    if (household.eventMembers.containsKey(key)) {
+    if (!usesSharedMembers && household.eventMembers.containsKey(key)) {
       final id = household.eventMembers[key];
       return id == 'unassigned' || memberById(id!) == null ? null : id;
     }
-    final marked = event.details['member_id']?.toString();
+    final manual = event.details['manual_association'];
+    final marked =
+        manual is Map &&
+            manual['provenance'] == 'manual' &&
+            manual['status'] == 'member'
+        ? manual['member_id']?.toString()
+        : null;
     if (marked != null && memberById(marked) != null) return marked;
     // Shared-camera ranges cannot establish a person identity.
     if (usesSharedMembers) return null;
@@ -1003,12 +1016,12 @@ class SafetyController extends ChangeNotifier {
   }
 
   String associationLabel(SafetyEvent event) {
+    if (usesSharedMembers) return memberIdFor(event) == null ? '待确认' : '人工关联';
     if (household.eventMembers.containsKey(eventAssociationKey(event)))
       return memberIdFor(event) == null ? '待归属' : '人工关联';
     final id = memberIdFor(event);
     if (id == null) return '待归属';
-    if (event.details['member_id']?.toString() == id)
-      return event.details['face_identity'] is Map ? '人脸识别候选 · 请核对' : '服务端成员标记';
+    if (event.details['member_id']?.toString() == id) return '人工关联';
     final m = memberById(id)!;
     return m.bindings.any(
           (b) =>

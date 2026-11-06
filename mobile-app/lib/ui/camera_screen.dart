@@ -6,6 +6,7 @@ import '../models/camera_connection.dart';
 import '../services/media_api.dart';
 import '../services/api.dart';
 import 'widgets.dart';
+import 'manual_tracks_panel.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({
@@ -355,6 +356,10 @@ class _CameraScreenState extends State<CameraScreen>
           ),
         if (_message != null) InfoBanner(_message!, error: true),
         if (_statusError != null) InfoBanner(_statusError!, error: true),
+        ManualTracksPanel(
+          controller: widget.controller,
+          active: widget.active && _foreground,
+        ),
         const SizedBox(height: 14),
         if (_stream != null)
           Wrap(

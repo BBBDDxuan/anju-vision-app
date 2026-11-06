@@ -6,6 +6,7 @@ import '../models/household.dart';
 import 'widgets.dart';
 import 'settings_screen.dart' show ContactsEditor;
 import 'member_detail_screen.dart';
+import 'member_avatar.dart';
 
 class MembersScreen extends StatefulWidget {
   const MembersScreen({
@@ -218,7 +219,7 @@ class MembersScreenState extends State<MembersScreen> {
                 const Surface(
                   child: EmptyState(
                     title: '还没有成员档案',
-                    message: '添加成员，录入人脸后可辅助识别提醒中的人员。',
+                    message: '添加名称、颜色和字母标识，建立人工标签档案。',
                     icon: Icons.person_add_alt_1_outlined,
                   ),
                 ),
@@ -228,13 +229,7 @@ class MembersScreenState extends State<MembersScreen> {
                   child: Surface(
                     padding: EdgeInsets.zero,
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Anju.light,
-                        child: Text(
-                          member.displayName.characters.first,
-                          style: const TextStyle(color: Anju.green),
-                        ),
-                      ),
+                      leading: MemberAvatar(member: member),
                       title: Text(
                         member.displayName,
                         style: const TextStyle(fontWeight: FontWeight.w700),
@@ -319,7 +314,8 @@ class _MemberEditor extends StatefulWidget {
 }
 
 class _MemberEditorState extends State<_MemberEditor> {
-  late final TextEditingController _name, _relation, _notes;
+  late final TextEditingController _name, _relation, _notes, _letter;
+  late String _labelColor;
   bool _busy = false;
   String? _error;
   @override
@@ -328,6 +324,8 @@ class _MemberEditorState extends State<_MemberEditor> {
     _name = TextEditingController(text: widget.member.name);
     _relation = TextEditingController(text: widget.member.relationship);
     _notes = TextEditingController(text: widget.member.notes);
+    _letter = TextEditingController(text: widget.member.labelLetter);
+    _labelColor = widget.member.labelColor;
   }
 
   @override
@@ -335,6 +333,7 @@ class _MemberEditorState extends State<_MemberEditor> {
     _name.dispose();
     _relation.dispose();
     _notes.dispose();
+    _letter.dispose();
     super.dispose();
   }
 
@@ -348,6 +347,8 @@ class _MemberEditorState extends State<_MemberEditor> {
           name: _name.text.trim(),
           relationship: _relation.text.trim(),
           notes: _notes.text.trim(),
+          labelColor: _labelColor,
+          labelLetter: _letter.text.trim(),
         ),
       );
       if (mounted) Navigator.pop(context);
@@ -404,13 +405,48 @@ class _MemberEditorState extends State<_MemberEditor> {
         ),
         const SizedBox(height: 8),
         Text(
-          '固定编号：成员${widget.member.number} · 档案保存在本机',
+          '固定编号：成员${widget.member.number} · ${widget.controller.usesSharedMembers ? '档案由电脑共享' : '档案保存在本机'}',
           style: const TextStyle(fontSize: 12, color: Anju.muted),
         ),
         const SizedBox(height: 22),
+        MemberAvatarEditor(
+          controller: widget.controller,
+          memberId: widget.member.id,
+          disabled: _busy,
+        ),
+        const SizedBox(height: 18),
+        TextField(
+          controller: _letter,
+          maxLength: 2,
+          decoration: const InputDecoration(labelText: '字母或简写（留空使用名称首字）'),
+        ),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final color in [
+              '#237e7b',
+              '#3874b8',
+              '#a04e88',
+              '#a35b29',
+              '#67619b',
+              '#566e35',
+            ])
+              ChoiceChip(
+                label: Text(color),
+                selectedColor: Color(
+                  0xff000000 | int.parse(color.substring(1), radix: 16),
+                ).withValues(alpha: 0.25),
+                selected: _labelColor == color,
+                onSelected: _busy
+                    ? null
+                    : (_) => setState(() => _labelColor = color),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
         TextField(
           controller: _name,
-          maxLength: 40,
+          maxLength: 80,
           decoration: InputDecoration(
             labelText: '称呼（留空使用默认编号）',
             hintText: '成员${widget.member.number}',
@@ -419,13 +455,13 @@ class _MemberEditorState extends State<_MemberEditor> {
         const SizedBox(height: 14),
         TextField(
           controller: _relation,
-          maxLength: 30,
+          maxLength: 80,
           decoration: const InputDecoration(labelText: '与家庭的关系（可选）'),
         ),
         const SizedBox(height: 14),
         TextField(
           controller: _notes,
-          maxLength: 500,
+          maxLength: 2000,
           maxLines: 3,
           decoration: const InputDecoration(labelText: '监护备注（可选）'),
         ),

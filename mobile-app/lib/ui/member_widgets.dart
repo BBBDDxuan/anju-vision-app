@@ -76,15 +76,21 @@ class MemberAssociationCard extends StatelessWidget {
         child: ListTile(
           leading: const Icon(Icons.person_pin_outlined, color: Anju.green),
           title: Text(
-            id == null ? '身份未确认' : controller.memberById(id)!.displayName,
+            id == null ? '未知成员' : controller.memberById(id)!.displayName,
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           ),
           subtitle: Text(
-            '${controller.associationLabel(event)} · 点击调整',
+            controller.usesSharedMembers
+                ? '${controller.associationLabel(event)} · 请在人物候选中确认当前 track'
+                : '${controller.associationLabel(event)} · 点击调整',
             style: const TextStyle(fontSize: 11, color: Anju.muted),
           ),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () => assignEventMember(context, controller, event),
+          trailing: controller.usesSharedMembers
+              ? null
+              : const Icon(Icons.chevron_right_rounded),
+          onTap: controller.usesSharedMembers
+              ? null
+              : () => assignEventMember(context, controller, event),
         ),
       );
     },
