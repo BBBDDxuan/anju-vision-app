@@ -34,6 +34,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
     with WidgetsBindingObserver {
   late MediaApi _api;
   late String _mode;
+  FlameScan _flameScan = FlameScan.normal;
   String? _selected, _error, _uploadName;
   List<Recording> _videos = [];
   Map<String, dynamic>? _health, _job, _answer, _plan;
@@ -134,6 +135,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
     _player = null;
     if (!mounted) return;
     setState(() {
+      if (_selected != id) _flameScan = FlameScan.normal;
       _selected = id;
       _job = null;
       _memory = null;
@@ -322,6 +324,8 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
   Future<void> _analysis(String action) async {
     final id = _selected;
     if (id == null) return;
+    final mode = _mode;
+    final flameScan = _flameScan;
     setState(() {
       _command = true;
       _error = null;
@@ -329,12 +333,12 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
     try {
       Map<String, dynamic> result;
       if (action == 'start') {
-        final plan = await _api.analysisPlan(id, _mode);
+        final plan = await _api.analysisPlan(id, mode);
         if (mounted) setState(() => _plan = plan);
-        if (_mode == 'safety' && plan['hybrid_safety_enabled'] != true) {
+        if (mode == 'safety' && plan['hybrid_safety_enabled'] != true) {
           throw const ApiException('电脑后端尚未启用安全识别模型，请先在原项目配置小模型与复核服务。');
         }
-        result = await _api.analyze(id, _mode);
+        result = await _api.analyze(id, mode, flameScan: flameScan);
       } else if (action == 'resume') {
         result = await _api.resume(id);
       } else {
@@ -476,6 +480,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
     final selected = _videos.where((v) => v.id == _selected).firstOrNull;
     final player = _player;
     final safety = _job?['safety'] as Map?;
+    final scanLabel = _job?['flame_scan'] == 'small_flame' ? ' · 小火苗识别' : '';
     final events = (_memory?.maps('events') ?? []).where((e) {
       final entity = _memory?.entityFor(e['subject_id']?.toString());
       if (_eventFilter == 'person') return entity?['entity_type'] == 'person';
@@ -597,6 +602,44 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
               SectionTitle(selected.name),
               Surface(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '火焰扫描',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        for (final scan in FlameScan.values)
+                          ChoiceChip(
+                            label: Text(
+                              scan == FlameScan.normal ? '正常扫描' : '小火苗识别',
+                            ),
+                            selected: _flameScan == scan,
+                            onSelected: _running || _command || _uploading
+                                ? null
+                                : (_) => setState(() {
+                                    _flameScan = scan;
+                                    if (_mode != 'safety') {
+                                      _mode = 'safety';
+                                      _plan = null;
+                                    }
+                                  }),
+                          ),
+                      ],
+                    ),
+                    const Text(
+                      '用于安全分析。疑似漏掉小火苗时可切换，扫描可能更久。',
+                      style: TextStyle(fontSize: 11, color: Anju.muted),
+                    ),
+                  ],
+                ),
+              ),
+              Surface(
+                child: Column(
                   children: [
                     if (player?.value.isInitialized == true) ...[
                       AspectRatio(
@@ -702,7 +745,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
               if (_job != null) ...[
                 const SizedBox(height: 14),
                 InfoBanner(
-                  '${_modeTitle(_job?['analysis_mode']?.toString())} · ${_status(_job?['status']?.toString())}',
+                  '${_modeTitle(_job?['analysis_mode']?.toString())}$scanLabel · ${_status(_job?['status']?.toString())}',
                 ),
                 if (_running || _job?['resumable'] == true)
                   LinearProgressIndicator(

@@ -5,6 +5,8 @@ import '../models/camera_connection.dart';
 import 'object_api.dart';
 import 'api.dart';
 
+enum FlameScan { normal, smallFlame }
+
 class UploadCancellation {
   bool cancelled = false;
   void cancel() => cancelled = true;
@@ -18,10 +20,17 @@ class MediaApi extends ObjectApi {
   Future<Map<String, dynamic>> video(String id) => getJson(videoPath(id));
   Future<Map<String, dynamic>> analysisPlan(String id, String mode) =>
       getJson('${videoPath(id)}/analysis-plan?mode=$mode');
-  Future<Map<String, dynamic>> analyze(String id, String mode) {
+  Future<Map<String, dynamic>> analyze(
+    String id,
+    String mode, {
+    FlameScan flameScan = FlameScan.normal,
+  }) {
     if (!{'safety', 'objects', 'all'}.contains(mode))
       throw const ApiException('分析模式无效');
-    return postJson('${videoPath(id)}/analyze?mode=$mode');
+    final scan = mode != 'objects' && flameScan == FlameScan.smallFlame
+        ? '&flame_scan=small_flame'
+        : '';
+    return postJson('${videoPath(id)}/analyze?mode=$mode$scan');
   }
 
   Future<Map<String, dynamic>> resume(String id) =>

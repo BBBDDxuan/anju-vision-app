@@ -136,7 +136,7 @@ void main() {
       }
     },
   );
-  test('analysis modes explicit; resume preserves original job mode', () async {
+  test('only new safety scans send a small-flame override', () async {
     final calls = <http.Request>[];
     final api = MediaApi(
       config,
@@ -147,11 +147,13 @@ void main() {
     );
     addTearDown(api.close);
     await api.analyze('v1', 'safety');
-    await api.analyze('v1', 'objects');
+    await api.analyze('v1', 'safety', flameScan: FlameScan.smallFlame);
+    await api.analyze('v1', 'objects', flameScan: FlameScan.smallFlame);
     await api.pause('v1');
     await api.resume('v1');
     expect(calls.map((r) => r.url.query), [
       'mode=safety',
+      'mode=safety&flame_scan=small_flame',
       'mode=objects',
       '',
       '',
