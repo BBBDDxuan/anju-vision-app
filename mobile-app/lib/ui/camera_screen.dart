@@ -263,6 +263,7 @@ class _CameraScreenState extends State<CameraScreen>
   String get _backendState => switch (_server?['state']) {
     'running' => '正在识别',
     'starting' => '正在启动模型',
+    'connecting' => '正在连接摄像头视频流',
     'reconnecting' => '正在重连摄像头',
     'stale' => '画面更新延迟',
     'error' => '识别进程异常，请检查后端',

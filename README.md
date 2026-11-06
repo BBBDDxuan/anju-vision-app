@@ -1,6 +1,6 @@
 # 安居视界 Android App
 
-当前维护主线：`main`。本次合并版本：`1.3.0+4011`。实际版本始终以 [pubspec.yaml](mobile-app/pubspec.yaml) 为准。
+当前维护主线：`main`。本次本机构建版本：`1.3.0+4012`（含本地摄像头认证修复）。实际版本始终以 [pubspec.yaml](mobile-app/pubspec.yaml) 为准。
 
 本仓库只有一套当前 App 源码：`mobile-app/`。后端属于独立的 `anju-vision-website` 仓库。历史源码包、手册和 ABC 交接材料不作为当前构建入口。
 

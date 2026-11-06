@@ -8,6 +8,42 @@ import 'package:elder_safety_mobile/services/api.dart';
 
 void main() {
   test(
+    'camera authentication failure is distinct from backend bearer rejection',
+    () async {
+      final api = ObjectApi(
+        const ObjectServiceConfig(),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'error': {
+                'code': 'CAMERA_AUTH_FAILED',
+                'message': 'rtsp://untrusted-secret',
+              },
+            }),
+            422,
+          ),
+        ),
+      );
+      addTearDown(api.close);
+      await expectLater(
+        api.postJson('/api/monitoring/camera'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.code, 'code', 'CAMERA_AUTH_FAILED')
+              .having(
+                (e) => e.message,
+                'message',
+                allOf(
+                  contains('摄像头本地账号或密码'),
+                  isNot(contains('untrusted-secret')),
+                ),
+              ),
+        ),
+      );
+    },
+  );
+
+  test(
     'video validation errors retain code and never masquerade as host rejection',
     () async {
       for (final code in [

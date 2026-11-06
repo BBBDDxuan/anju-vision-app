@@ -148,6 +148,11 @@ class ObjectApi {
           /* Never display arbitrary server bodies or credentials. */
         }
         final known = switch (code) {
+          'CAMERA_AUTH_FAILED' => '摄像头本地账号或密码未通过认证，请核对设备密码与 RTSP 权限；这不是后端访问令牌错误',
+          'CAMERA_STREAM_NOT_FOUND' => '摄像头视频路径不存在，请核对 stream1、stream2 或通道参数',
+          'CAMERA_STREAM_TIMEOUT' => '摄像头取流超时，请检查设备是否在线及取流连接数',
+          'CAMERA_STREAM_UNAVAILABLE' => '摄像头端口可达但无法取流，请检查 RTSP 服务、视频路径及连接数',
+          'CAMERA_PROBE_MISSING' => '后端取流检查工具不可用，请检查电脑上的 FFprobe 配置',
           'CAMERA_UNREACHABLE' => '电脑后端无法连接摄像头，请检查电脑到摄像头的网络和 RTSP 端口',
           'CAMERA_ALERT_RELAY_MISSING' => '摄像头告警身份未配置，请由后端负责人重新运行手机服务配置',
           'CAMERA_RUNTIME_MISSING' => '电脑上的摄像头模型运行环境未就绪',
