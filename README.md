@@ -1,6 +1,6 @@
 # 安居视界 Android App
 
-当前维护主线：`main`。本次本机构建版本：`1.3.0+4012`（含本地摄像头认证修复）。实际版本始终以 [pubspec.yaml](mobile-app/pubspec.yaml) 为准。
+当前维护主线：`main`。本次本机构建版本：`1.5.0+4017`（家庭账号与全员告警版）。实际版本始终以 [pubspec.yaml](mobile-app/pubspec.yaml) 为准。
 
 本仓库只有一套当前 App 源码：`mobile-app/`。后端属于独立的 `anju-vision-website` 仓库。历史源码包、手册和 ABC 交接材料不作为当前构建入口。
 
@@ -12,9 +12,9 @@
 - MP4 分片上传、录像库、安全分析、物品寻迹、问答、事件证据和原片回看。
 - 局域网后端的软件更新检查、下载和用户确认安装。
 - 成员列表进入详情，电脑共享档案、人脸照片录入/试识别、告警身份候选与人工纠正。
-- 主要联系人先提醒，重要事件未确认时按“备用联系人提醒延迟”提醒备用联系人。
+- 家庭账号登录、扫码邀请和注册家庭成员列表。所有有效账号共享告警，App 前台按账号提醒，不分主备。
 
-识别模型运行在电脑后端。Firebase 默认关闭；后台、锁屏推送需要单独配置和真机验收。App 新接口需要与配套后端版本一起部署；仅更新 APK 不会自动更新后端。
+识别模型运行在电脑后端。账号版仅提供前台告警提示，未启用后台或锁屏云推送。App 新接口需要与配套后端版本一起部署；仅更新 APK 不会自动更新后端。
 
 ## 目录
 
@@ -43,6 +43,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
 默认使用已安装在 `D:\AndroidDev` 的工具，构建 ARM64 正式包。源码、Gradle 构建和最终输出均位于本仓库，工具及缓存继续留在外部工具目录。
+
+自建局域网 CA 可通过 -LanTlsProfile 读取部署机器上的 ca.pem（公开 CA）和 address.txt（每行一个私有 IPv4）。默认读取 Windows 用户本地数据目录下的 AnjuVision/lan-tls；本机地址和证书不提交 Git。未配置专用 CA 时使用系统信任。
 
 首次需要本机私有的 `mobile-app/android/key.properties` 与原签名文件；这些文件不得提交。其他电脑可用 `-ToolsRoot` 指定自己的 Flutter/JDK/SDK 根目录。参见开发说明。
 

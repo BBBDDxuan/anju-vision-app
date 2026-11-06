@@ -11,6 +11,7 @@ class AppNotificationBinding {
     required AndroidNotices android,
     required this.currentScope,
     required this.canPresent,
+    this.accountId,
     NoticeStateStore? store,
   }) : _store = store ?? SecureNoticeStateStore() {
     _android = _ScopedPresenter(
@@ -22,6 +23,7 @@ class AppNotificationBinding {
   final String? Function() currentScope;
   final bool Function(String) canPresent;
   final NoticeStateStore _store;
+  final String? accountId;
   late final AndroidNotices _android;
   UnifiedNotificationService? _service;
   Future<void> _queue = Future.value();
@@ -33,7 +35,11 @@ class AppNotificationBinding {
         return <UnifiedAlertNotice>[];
       if (_service?.gate.scope != snapshot.scope) {
         _service = UnifiedNotificationService(
-          gate: AlertNotificationGate(store: _store, scope: snapshot.scope),
+          gate: AlertNotificationGate(
+            store: _store,
+            scope: snapshot.scope,
+            accountId: accountId,
+          ),
           android: _android,
         );
       }

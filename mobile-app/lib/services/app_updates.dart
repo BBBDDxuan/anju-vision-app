@@ -1,3 +1,4 @@
+import 'backend_tls.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -197,7 +198,7 @@ class AppUpdateManager extends ChangeNotifier {
     http.Client Function()? clientFactory,
     DateTime Function()? clock,
   }) : _gateway = gateway ?? AndroidAppUpdateGateway(),
-       _clientFactory = clientFactory ?? http.Client.new,
+       _clientFactory = clientFactory,
        _clock = clock ?? DateTime.now {
     _gateway.onProgress((digest, received, total) {
       if (_disposed ||
@@ -210,7 +211,7 @@ class AppUpdateManager extends ChangeNotifier {
     });
   }
   final AppUpdateGateway _gateway;
-  final http.Client Function() _clientFactory;
+  final http.Client Function()? _clientFactory;
   final DateTime Function() _clock;
   InstalledAppVersion? installed;
   AppUpdateRelease? release;
@@ -330,7 +331,7 @@ class AppUpdateManager extends ChangeNotifier {
     phase = AppUpdatePhase.checking;
     message = '正在向电脑检查新版本';
     _notify();
-    final client = _clientFactory();
+    final client = _clientFactory?.call() ?? backendClient(base);
     _activeClient = client;
     try {
       final uri = Uri.parse('$base/api/app/version').replace(

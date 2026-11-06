@@ -91,9 +91,16 @@ abstract interface class BackgroundNoticeReceipts {
 /// Use one gate per backend+household. Persist before returning notices; a failed
 /// write produces no notice and leaves the previous in-memory state untouched.
 class AlertNotificationGate {
-  AlertNotificationGate({required this.store, required this.scope});
+  AlertNotificationGate({
+    required this.store,
+    required this.scope,
+    this.accountId,
+  });
   final NoticeStateStore store;
   final String scope;
+  final String? accountId;
+  String get _storageScope =>
+      accountId == null ? scope : '$scope|account:$accountId';
   Map<String, dynamic>? _state;
   Future<void> _queue = Future<void>.value();
 
@@ -119,7 +126,7 @@ class AlertNotificationGate {
   ) async {
     if (scope.isEmpty) throw StateError('Notification scope is required');
     if (_state == null) {
-      final raw = await store.read(scope);
+      final raw = await store.read(_storageScope);
       if (raw == null) {
         _state = {'version': 1, 'seen': <String, dynamic>{}};
       } else {
@@ -144,12 +151,17 @@ class AlertNotificationGate {
       final remembered = old is Map ? old['consumed'] != false : false;
       final consumed =
           remembered ||
-          (store is BackgroundNoticeReceipts &&
+          (accountId == null &&
+              store is BackgroundNoticeReceipts &&
               await (store as BackgroundNoticeReceipts).wasReceived(
                 scope,
                 notice.id,
               ));
-      if (!consumed && !historical && enabled && notice.eligible) {
+      final eligible = accountId == null
+          ? notice.eligible
+          : notice.review == 'confirmed' &&
+                notice.notification != 'skipped_history';
+      if (!consumed && !historical && enabled && eligible) {
         ready.add(notice);
       }
       // Pending candidates stay silent but may become confirmed later. History,
@@ -157,7 +169,7 @@ class AlertNotificationGate {
       final terminal =
           historical ||
           !enabled ||
-          notice.eligible ||
+          eligible ||
           notice.handling == 'acknowledged' ||
           notice.handling == 'resolved' ||
           notice.review == 'withdrawn' ||
@@ -168,7 +180,7 @@ class AlertNotificationGate {
       };
     }
     final next = {'version': 1, 'seen': seen};
-    await store.write(scope, jsonEncode(next));
+    await store.write(_storageScope, jsonEncode(next));
     _state = next;
     return ready;
   }

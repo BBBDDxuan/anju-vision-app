@@ -1,3 +1,4 @@
+import 'backend_tls.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -90,7 +91,7 @@ class ObjectApi {
     this.config, {
     http.Client? client,
     this.timeout = const Duration(seconds: 25),
-  }) : _client = client ?? http.Client() {
+  }) : _client = client ?? backendClient(config.baseUrl) {
     final candidate = AppSettings(
       baseUrl: config.baseUrl,
       bearerToken: 'url-validation-only',
@@ -148,7 +149,8 @@ class ObjectApi {
           /* Never display arbitrary server bodies or credentials. */
         }
         final known = switch (code) {
-          'CAMERA_AUTH_FAILED' => '摄像头本地账号或密码未通过认证，请核对设备密码与 RTSP 权限；这不是后端访问令牌错误',
+          'CAMERA_AUTH_FAILED' =>
+            '摄像头本地账号或密码未通过认证，请核对设备密码与 RTSP 权限；这不是后端访问令牌错误',
           'CAMERA_STREAM_NOT_FOUND' => '摄像头视频路径不存在，请核对 stream1、stream2 或通道参数',
           'CAMERA_STREAM_TIMEOUT' => '摄像头取流超时，请检查设备是否在线及取流连接数',
           'CAMERA_STREAM_UNAVAILABLE' => '摄像头端口可达但无法取流，请检查 RTSP 服务、视频路径及连接数',

@@ -8,6 +8,8 @@ import '../services/settings_store.dart';
 import '../services/push_service.dart';
 import 'widgets.dart';
 import 'manual_screen.dart';
+import 'registered_family_panel.dart';
+import 'pair_scanner.dart';
 import 'app_update_screen.dart';
 import '../services/app_updates.dart';
 
@@ -17,10 +19,16 @@ class SettingsScreen extends StatefulWidget {
     required this.controller,
     this.openMembers,
     this.updates,
+    this.accountLabel,
+    this.accountDisplayName,
+    this.accountId,
+    this.onAccountLogout,
   });
   final SafetyController controller;
   final VoidCallback? openMembers;
   final AppUpdateManager? updates;
+  final String? accountLabel, accountId, accountDisplayName;
+  final VoidCallback? onAccountLogout;
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -30,6 +38,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final c = widget.controller;
     final name = c.preferences.contactName(c.settings.contactId);
+    final initials = (widget.accountDisplayName ?? '')
+        .trim()
+        .characters
+        .take(2)
+        .toString();
     return ListView(
       key: const PageStorageKey('settings'),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
@@ -38,8 +51,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           '我的守护',
           style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 6),
-        Text('用更合适的方式，照看重要的人', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 24),
         Surface(
           child: Row(
@@ -51,11 +62,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: Anju.light,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(
-                  Icons.person_rounded,
-                  color: Anju.green,
-                  size: 34,
-                ),
+                child: initials.isEmpty
+                    ? const Icon(
+                        Icons.person_rounded,
+                        color: Anju.green,
+                        size: 34,
+                      )
+                    : Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Text(
+                              initials,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                color: Anju.green,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -63,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name.isEmpty ? '家庭联系人' : name,
+                      widget.accountLabel ?? (name.isEmpty ? '家庭联系人' : name),
                       style: const TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
@@ -71,7 +99,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      c.settings.contactId == 'primary'
+                      widget.accountLabel != null
+                          ? '家庭告警 · 所有注册成员可查看'
+                          : c.settings.contactId == 'primary'
                           ? '主要联系人 · 第一时间接收提醒'
                           : '备用联系人 · 接收升级提醒',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -99,12 +129,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 widget.openMembers,
               ),
               const Divider(indent: 56),
-              _row(
-                Icons.people_outline_rounded,
-                '家庭联系人',
-                '主要联系人与备用联系人',
-                () => _open(context, ContactsEditor(controller: c)),
-              ),
+              if (widget.accountId != null)
+                _row(
+                  Icons.people_outline_rounded,
+                  '注册家庭成员',
+                  '查看已注册的家人，与被监护人员分开',
+                  () => _open(
+                    context,
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: RegisteredFamilyPanel(settings: c.settings),
+                    ),
+                  ),
+                )
+              else
+                _row(
+                  Icons.people_outline_rounded,
+                  '家庭联系人',
+                  '主要联系人与备用联系人',
+                  () => _open(context, ContactsEditor(controller: c)),
+                ),
               const Divider(indent: 56),
               _row(
                 Icons.notifications_none_rounded,
@@ -120,17 +164,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: EdgeInsets.zero,
           child: Column(
             children: [
-              _row(
-                Icons.cloud_outlined,
-                '连接服务',
-                c.videoError != null || c.error != null
-                    ? '连接需要检查'
-                    : c.lastSync != null
-                    ? '已同步 · ${shortTime(c.lastSync)}'
-                    : '配置统一后端地址与访问令牌',
-                () => _open(context, _ConnectionSheet(controller: c)),
-              ),
-              const Divider(indent: 56),
+              if (widget.onAccountLogout != null) ...[
+                _row(
+                  Icons.logout,
+                  '退出登录',
+                  '退出后可重新登录或更换电脑地址',
+                  widget.onAccountLogout,
+                ),
+                const Divider(indent: 56),
+              ] else ...[
+                _row(
+                  Icons.cloud_outlined,
+                  '连接服务',
+                  c.videoError != null || c.error != null
+                      ? '连接需要检查'
+                      : c.lastSync != null
+                      ? '已同步 · ${shortTime(c.lastSync)}'
+                      : '配置统一后端地址与访问令牌',
+                  () => _open(context, _ConnectionSheet(controller: c)),
+                ),
+                const Divider(indent: 56),
+              ],
               if (widget.updates != null) ...[
                 ListenableBuilder(
                   listenable: widget.updates!,
@@ -285,6 +339,29 @@ class _ConnectionSheetState extends State<_ConnectionSheet> {
     pollSeconds: int.tryParse(_poll.text.trim()) ?? 0,
   );
 
+  Future<void> _scanPair() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+      _error = false;
+    });
+    try {
+      final result = await scanPairing(context);
+      if (!mounted || result == null) return;
+      _url.text = result.origin;
+      _token.text = result.token;
+      setState(() => _message = '配对成功，请确认联系人角色后保存。');
+    } on FormatException catch (error) {
+      if (mounted)
+        setState(() {
+          _message = error.message;
+          _error = true;
+        });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _run(bool probe) async {
     if (_busy) return;
     FocusScope.of(context).unfocus();
@@ -379,6 +456,19 @@ class _ConnectionSheetState extends State<_ConnectionSheet> {
           style: TextStyle(color: Anju.muted, fontSize: 12),
         ),
         const SizedBox(height: 22),
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: _busy ? null : _scanPair,
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('扫描电脑配对二维码'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          '在电脑网页的实时摄像头页面生成二维码；请仅在可信局域网配对。',
+          style: TextStyle(color: Anju.muted, fontSize: 12),
+        ),
+        const SizedBox(height: 16),
         TextField(
           controller: _url,
           enabled: !_busy,

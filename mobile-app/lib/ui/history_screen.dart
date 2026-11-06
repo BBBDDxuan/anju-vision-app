@@ -69,11 +69,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
             '守护消息',
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '重要的动态，不错过；每一次回应，都留存',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
           const SizedBox(height: 22),
           TextField(
             controller: _search,

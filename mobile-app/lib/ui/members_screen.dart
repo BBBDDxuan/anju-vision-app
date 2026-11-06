@@ -6,6 +6,7 @@ import '../models/household.dart';
 import 'widgets.dart';
 import 'settings_screen.dart' show ContactsEditor;
 import 'member_detail_screen.dart';
+import 'registered_family_panel.dart';
 
 class MembersScreen extends StatefulWidget {
   const MembersScreen({
@@ -13,10 +14,12 @@ class MembersScreen extends StatefulWidget {
     required this.controller,
     required this.openEvent,
     required this.openDevices,
+    this.accountMode = false,
   });
   final SafetyController controller;
   final void Function(String) openEvent;
   final VoidCallback openDevices;
+  final bool accountMode;
   @override
   State<MembersScreen> createState() => MembersScreenState();
 }
@@ -137,9 +140,12 @@ class MembersScreenState extends State<MembersScreen> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           children: [
             SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(value: 0, label: Text('被监护人员')),
-                ButtonSegment(value: 1, label: Text('家庭联系人')),
+              segments: [
+                const ButtonSegment(value: 0, label: Text('被监护人员')),
+                ButtonSegment(
+                  value: 1,
+                  label: Text(widget.accountMode ? '注册家庭成员' : '家庭联系人'),
+                ),
               ],
               selected: {_peopleTab},
               showSelectedIcon: false,
@@ -147,7 +153,9 @@ class MembersScreenState extends State<MembersScreen> {
                   setState(() => _peopleTab = value.single),
             ),
             const SizedBox(height: 20),
-            if (_peopleTab == 1) ...[
+            if (_peopleTab == 1 && widget.accountMode)
+              RegisteredFamilyPanel(settings: c.settings)
+            else if (_peopleTab == 1) ...[
               Surface(
                 padding: EdgeInsets.zero,
                 child: Column(
@@ -200,7 +208,9 @@ class MembersScreenState extends State<MembersScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      c.usesSharedMembers ? '家庭成员' : '被监护人员',
+                      !widget.accountMode && c.usesSharedMembers
+                          ? '家庭成员'
+                          : '被监护人员',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,

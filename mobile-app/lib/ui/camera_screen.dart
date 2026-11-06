@@ -104,6 +104,55 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
+  Future<void> _searchCameras() async {
+    final scope = _scope;
+    final api = _api();
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final result = await api.getJson('/api/lan/cameras');
+      if (!mounted || scope != _scope) return;
+      final devices = (result['cameras'] as List? ?? [])
+          .whereType<Map>()
+          .toList();
+      if (devices.isEmpty) {
+        setState(() => _message = '未发现摄像头。请检查 ONVIF 和网络，或手动填写 IP。');
+        return;
+      }
+      final device = await showDialog<Map>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: const Text('选择摄像头'),
+          children: [
+            for (final device in devices)
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(context).pop(device),
+                child: Text(device['host'].toString()),
+              ),
+          ],
+        ),
+      );
+      if (!mounted || scope != _scope || device == null) return;
+      setState(() {
+        _host.text = device['host'].toString();
+        _port.text = device['port'].toString();
+        _user.text = device['username'].toString();
+        _path.text = device['path'].toString();
+        _password.clear();
+        _message = '已填写摄像头 IP 和默认取流参数，请输入设备密码。';
+      });
+    } catch (_) {
+      if (mounted && scope == _scope) {
+        setState(() => _message = '搜索失败，请确认已连接新版后端，或手动填写 IP。');
+      }
+    } finally {
+      api.close();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _connect() async {
     final c = _connection;
     if (c.validationError != null) {
@@ -375,6 +424,12 @@ class _CameraScreenState extends State<CameraScreen>
           style: TextStyle(fontSize: 12, color: Anju.muted, height: 1.6),
         ),
         const SectionTitle('摄像头连接'),
+        OutlinedButton.icon(
+          onPressed: _busy ? null : _searchCameras,
+          icon: const Icon(Icons.search),
+          label: const Text('搜索摄像头'),
+        ),
+        const SizedBox(height: 16),
         TextField(
           controller: _host,
           enabled: !_busy,

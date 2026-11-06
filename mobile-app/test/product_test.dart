@@ -67,7 +67,7 @@ void main() {
         '成员2',
         '成员3',
       ]);
-      expect(find.text('家的动态，一眼安心'), findsOneWidget);
+      expect(find.text('三项守护'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byType(NavigationBar),

@@ -1,3 +1,4 @@
+import 'backend_tls.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -11,7 +12,7 @@ import 'object_api.dart';
 class WorkspaceProxy {
   WorkspaceProxy(this.config);
   final ObjectServiceConfig config;
-  final _http = HttpClient()
+  late final _http = backendHttpClient(config.baseUrl)
     ..autoUncompress = false
     ..connectionTimeout = const Duration(seconds: 15);
   HttpServer? _server;

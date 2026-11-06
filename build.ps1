@@ -1,6 +1,7 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$ToolsRoot = '',
+    [string]$LanTlsProfile = '',
     [ValidateSet('release', 'debug')][string]$Configuration = 'release',
     [ValidateSet('android-arm', 'android-arm64', 'android-x64')]
     [string[]]$TargetPlatform = @('android-arm64'),
@@ -10,6 +11,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $mobileRoot = Join-Path $PSScriptRoot 'mobile-app'
+if (-not $LanTlsProfile) {
+    $userLocalData = [Environment]::GetFolderPath('LocalApplicationData')
+    if ($userLocalData) { $LanTlsProfile = Join-Path $userLocalData 'AnjuVision\lan-tls' }
+}
 if (-not $ToolsRoot) {
     $ToolsRoot = if ($env:ANJU_ANDROID_TOOLS_ROOT) { $env:ANJU_ANDROID_TOOLS_ROOT } else { 'D:\AndroidDev' }
 }
@@ -27,7 +32,7 @@ if ($PSScriptRoot -match '[^\x00-\x7f]' -or $ToolsRoot -match '[^\x00-\x7f]') {
     $env:ANJU_ANDROID_TOOLS_ROOT = $ToolsRoot
     try {
         . (Join-Path $mobileRoot 'tool\ascii-env.ps1') -ToolsDrive $toolsDrive -RepositoryDrive $repositoryDrive
-        & ($repositoryDrive + '\build.ps1') -ToolsRoot ($toolsDrive + '\') -Configuration $Configuration -TargetPlatform $TargetPlatform -WithFirebase:$WithFirebase -ExpectedSigningSha256 $ExpectedSigningSha256
+        & ($repositoryDrive + '\build.ps1') -ToolsRoot ($toolsDrive + '\') -LanTlsProfile $LanTlsProfile -Configuration $Configuration -TargetPlatform $TargetPlatform -WithFirebase:$WithFirebase -ExpectedSigningSha256 $ExpectedSigningSha256
     } finally {
         Set-Location -LiteralPath $callerLocation.Path
         # Only aliases created above, after proving both letters were unoccupied.
@@ -68,6 +73,7 @@ $signer = Get-ChildItem -LiteralPath (Join-Path $env:ANDROID_HOME 'build-tools')
     Sort-Object FullName -Descending | Select-Object -First 1
 if (-not $signer) { throw 'Android apksigner was not found.' }
 $priorFirebase = $env:ORG_GRADLE_PROJECT_enableFirebase
+$priorTlsResources = $env:ANJU_ANDROID_TLS_RES
 Push-Location -LiteralPath $mobileRoot
 try {
     if ($WithFirebase) {
@@ -87,7 +93,35 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Notification configuration check failed.' }
     $firebase = ([bool]$WithFirebase).ToString().ToLowerInvariant()
     $platforms = $TargetPlatform -join ','
-    & $flutter build apk "--$Configuration" --no-pub --split-per-abi "--target-platform=$platforms" "--dart-define=USE_FIREBASE=$firebase"
+    $tlsArgs = @()
+    $env:ANJU_ANDROID_TLS_RES = $null
+    if ($LanTlsProfile -and (Test-Path -LiteralPath (Join-Path $LanTlsProfile 'address.txt'))) {
+        $ca = [IO.File]::ReadAllBytes((Join-Path $LanTlsProfile 'ca.pem'))
+        $pem = [Text.Encoding]::ASCII.GetString($ca).Trim()
+        if ($ca.Length -gt 16384 -or $pem -notmatch '\A-----BEGIN CERTIFICATE-----\s+[A-Za-z0-9+/=\s]+-----END CERTIFICATE-----\z') {
+            throw 'LAN profile must contain one public CA certificate, never a private key.'
+        }
+        $addresses = @((Get-Content -LiteralPath (Join-Path $LanTlsProfile 'address.txt')) |
+            ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
+        if ($addresses.Count -lt 1 -or $addresses.Count -gt 12) { throw 'Invalid LAN trust address count.' }
+        foreach ($ip in $addresses) {
+            if ($ip -notmatch '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)\d{1,3}\.\d{1,3}(?:\.\d{1,3})?$' -or
+                ($ip.Split('.').Count -ne 4) -or [Net.IPAddress]::Parse($ip).ToString() -ne $ip) {
+                throw 'LAN certificate trust is limited to canonical private IPv4 addresses.'
+            }
+        }
+        $res = Join-Path $mobileRoot 'build\local-lan-tls-res'
+        [void][IO.Directory]::CreateDirectory((Join-Path $res 'raw'))
+        [void][IO.Directory]::CreateDirectory((Join-Path $res 'xml'))
+        [IO.File]::WriteAllBytes((Join-Path $res 'raw\anju_lan_ca.pem'), $ca)
+        $domains = @($addresses | ForEach-Object { '<domain includeSubdomains="false">' + $_ + '</domain>' }) -join ''
+        $xml = '<network-security-config><base-config cleartextTrafficPermitted="true"><trust-anchors><certificates src="system"/></trust-anchors></base-config><domain-config cleartextTrafficPermitted="false">' + $domains + '<trust-anchors><certificates src="@raw/anju_lan_ca"/></trust-anchors></domain-config></network-security-config>'
+        [IO.File]::WriteAllText((Join-Path $res 'xml\anju_network_security.xml'), $xml)
+        $env:ANJU_ANDROID_TLS_RES = $res
+        $origins = @($addresses | ForEach-Object { "https://$($_):8000" }) -join ','
+        $tlsArgs = @("--dart-define=ANJU_LAN_ORIGINS=$origins", "--dart-define=ANJU_LAN_CA_BASE64=$([Convert]::ToBase64String($ca))")
+    }
+    & $flutter build apk "--$Configuration" --no-pub --split-per-abi "--target-platform=$platforms" "--dart-define=USE_FIREBASE=$firebase" @tlsArgs
     if ($LASTEXITCODE -ne 0) { throw 'Android APK build failed.' }
     $abis = @{ 'android-arm' = 'armeabi-v7a'; 'android-arm64' = 'arm64-v8a'; 'android-x64' = 'x86_64' }
     $artifacts = @()
@@ -123,4 +157,5 @@ try {
 } finally {
     Pop-Location
     $env:ORG_GRADLE_PROJECT_enableFirebase = $priorFirebase
+    $env:ANJU_ANDROID_TLS_RES = $priorTlsResources
 }

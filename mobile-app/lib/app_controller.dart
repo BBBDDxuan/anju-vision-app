@@ -26,6 +26,7 @@ typedef ObjectApiFactory = ObjectApi Function(ObjectServiceConfig config);
 class SafetyController extends ChangeNotifier {
   SafetyController({
     required this.store,
+    this.accountMode = false,
     PushGateway? gateway,
     RepositoryFactory? repositoryFactory,
     ObjectApiFactory? videoApiFactory,
@@ -73,6 +74,7 @@ class SafetyController extends ChangeNotifier {
     );
   }
   final SettingsStore store;
+  final bool accountMode;
   final RepositoryFactory _factory;
   final ObjectApiFactory _videoFactory;
   final MembersApi Function(AppSettings)? _membersFactory;
@@ -101,8 +103,7 @@ class SafetyController extends ChangeNotifier {
       !configuring &&
       _active &&
       notificationScope == scope &&
-      _preferencesLoaded &&
-      preferences.notificationsEnabled;
+      (accountMode || (_preferencesLoaded && preferences.notificationsEnabled));
 
   /// Native/FCM clicks provide a scoped ID; fetch its real source before routing.
   Future<void> openScopedAlert(String scope, String id) async {
@@ -490,7 +491,8 @@ class SafetyController extends ChangeNotifier {
                 changed: result.changed,
                 active: _active,
                 notificationsEnabled:
-                    _preferencesLoaded && preferences.notificationsEnabled,
+                    accountMode ||
+                    (_preferencesLoaded && preferences.notificationsEnabled),
               ),
             );
           } catch (e) {

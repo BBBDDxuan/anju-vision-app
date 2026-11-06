@@ -105,15 +105,17 @@ abstract interface class AlertSyncStore {
 
 class SecureSettingsStore
     implements SettingsStore, HouseholdStore, AlertSyncStore {
-  SecureSettingsStore({FlutterSecureStorage? storage})
+  SecureSettingsStore({FlutterSecureStorage? storage, this.namespace = ""})
     : _storage = storage ?? const FlutterSecureStorage();
   final FlutterSecureStorage _storage;
+  final String namespace;
+  String _key(String name) => namespace.isEmpty ? name : '$name|$namespace';
   static const _settingsKey = 'elder_safety_settings_v1';
   static const _pushKey = 'elder_safety_push_v1';
   Future<void> _alertWrites = Future.value();
   @override
   Future<Map<String, dynamic>?> loadAlertSync(String scope) async {
-    final raw = await _storage.read(key: 'anju_alert_sync_v1|$scope');
+    final raw = await _storage.read(key: _key('anju_alert_sync_v1|$scope'));
     return raw == null
         ? null
         : Map<String, dynamic>.from(jsonDecode(raw) as Map);
@@ -124,7 +126,10 @@ class SecureSettingsStore
     // Cursor and matching mirror are one atomic secure-storage value.
     final encoded = jsonEncode(snapshot);
     final operation = _alertWrites.then(
-      (_) => _storage.write(key: 'anju_alert_sync_v1|$scope', value: encoded),
+      (_) => _storage.write(
+        key: _key('anju_alert_sync_v1|$scope'),
+        value: encoded,
+      ),
     );
     _alertWrites = operation.catchError((Object _) {});
     return operation;
@@ -132,7 +137,7 @@ class SecureSettingsStore
 
   @override
   Future<HouseholdData?> loadHousehold() async {
-    final raw = await _storage.read(key: 'anju_household_v11');
+    final raw = await _storage.read(key: _key('anju_household_v11'));
     return raw == null
         ? null
         : HouseholdData.fromJson(Map<String, dynamic>.from(jsonDecode(raw)));
@@ -140,7 +145,7 @@ class SecureSettingsStore
 
   @override
   Future<void> saveHousehold(HouseholdData data) => _storage.write(
-    key: 'anju_household_v11',
+    key: _key('anju_household_v11'),
     value: jsonEncode(data.toJson()),
   );
 
@@ -148,7 +153,7 @@ class SecureSettingsStore
   Future<AppSettings> load() async {
     await _storage.delete(key: 'elder_safety_demo_preferences_v1');
     await _storage.delete(key: 'anju_demo_events_v1');
-    final raw = await _storage.read(key: _settingsKey);
+    final raw = await _storage.read(key: _key(_settingsKey));
     if (raw == null) return const AppSettings();
     return AppSettings.fromJson(
       Map<String, dynamic>.from(jsonDecode(raw) as Map),
@@ -156,11 +161,13 @@ class SecureSettingsStore
   }
 
   @override
-  Future<void> save(AppSettings settings) =>
-      _storage.write(key: _settingsKey, value: jsonEncode(settings.toJson()));
+  Future<void> save(AppSettings settings) => _storage.write(
+    key: _key(_settingsKey),
+    value: jsonEncode(settings.toJson()),
+  );
   @override
   Future<Map<String, dynamic>?> loadPushRegistration() async {
-    final raw = await _storage.read(key: _pushKey);
+    final raw = await _storage.read(key: _key(_pushKey));
     return raw == null
         ? null
         : Map<String, dynamic>.from(jsonDecode(raw) as Map);
@@ -169,6 +176,6 @@ class SecureSettingsStore
   @override
   Future<void> savePushRegistration(Map<String, dynamic>? registration) =>
       registration == null
-      ? _storage.delete(key: _pushKey)
-      : _storage.write(key: _pushKey, value: jsonEncode(registration));
+      ? _storage.delete(key: _key(_pushKey))
+      : _storage.write(key: _key(_pushKey), value: jsonEncode(registration));
 }

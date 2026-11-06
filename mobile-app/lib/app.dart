@@ -21,7 +21,16 @@ import 'ui/widgets.dart';
 import 'package:flutter/services.dart';
 
 class ElderSafetyApp extends StatefulWidget {
-  const ElderSafetyApp({super.key, required this.controller});
+  const ElderSafetyApp({
+    super.key,
+    required this.controller,
+    this.accountLabel,
+    this.accountDisplayName,
+    this.accountId,
+    this.onAccountLogout,
+  });
+  final String? accountLabel, accountId, accountDisplayName;
+  final VoidCallback? onAccountLogout;
   final SafetyController controller;
   @override
   State<ElderSafetyApp> createState() => _ElderSafetyAppState();
@@ -64,6 +73,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
     _notificationBinding = AppNotificationBinding(
       android: _android,
       currentScope: () => widget.controller.notificationScope,
+      accountId: widget.accountId,
       canPresent: (scope) =>
           mounted &&
           _active &&
@@ -113,17 +123,29 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
   }
 
   void _updateChanged() {
-    if (!mounted || !_active || !_updates.ready || _updates.release == null) return;
+    if (!mounted || !_active || !_updates.ready || _updates.release == null)
+      return;
     final digest = _updates.release!.sha256;
     if (_promptedUpdate == digest) return;
     _promptedUpdate = digest;
-    _messenger.currentState?.showSnackBar(SnackBar(
-      content: const Text('新版已下载，可安装更新'),
-      duration: const Duration(seconds: 20),
-      action: SnackBarAction(label: '查看', onPressed: () {
-        unawaited(_navigator.currentState?.push<void>(MaterialPageRoute(builder: (_) => AppUpdateScreen(updates: _updates))));
-      }),
-    ));
+    _messenger.currentState?.showSnackBar(
+      SnackBar(
+        content: const Text('新版已下载，可安装更新'),
+        duration: const Duration(seconds: 20),
+        action: SnackBarAction(
+          label: '查看',
+          onPressed: () {
+            unawaited(
+              _navigator.currentState?.push<void>(
+                MaterialPageRoute(
+                  builder: (_) => AppUpdateScreen(updates: _updates),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _initializeNativeNotices() async {
@@ -217,6 +239,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
       controller: widget.controller,
       openEvent: _openEvent,
       openDevices: _openDevices,
+      accountMode: widget.accountId != null,
     ),
   );
 
@@ -346,7 +369,10 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _active = state == AppLifecycleState.resumed;
     widget.controller.setActive(_active);
-    if (_active) { unawaited(_updates.check()); _updateChanged(); }
+    if (_active) {
+      unawaited(_updates.check());
+      _updateChanged();
+    }
   }
 
   @override
@@ -377,7 +403,15 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
           ),
           DevicesScreen(controller: controller, openEvent: _openEvent),
           HistoryScreen(controller: controller, openEvent: _openEvent),
-          SettingsScreen(controller: controller, openMembers: _openMembers, updates: _updates),
+          SettingsScreen(
+            controller: controller,
+            openMembers: _openMembers,
+            updates: _updates,
+            accountLabel: widget.accountLabel,
+            accountDisplayName: widget.accountDisplayName,
+            accountId: widget.accountId,
+            onAccountLogout: widget.onAccountLogout,
+          ),
         ];
         return PopScope(
           canPop: _tab == 0,

@@ -35,8 +35,6 @@ class _DevicesScreenState extends State<DevicesScreen> {
             '我的设备',
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 6),
-          Text('连接每一个角落，照看每一份日常', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 20),
           Surface(
             child: Column(
@@ -67,11 +65,6 @@ class _DevicesScreenState extends State<DevicesScreen> {
                       label: const Text('上传视频 / 录像库'),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '直连预览与下方服务端设备心跳分别显示。',
-                  style: TextStyle(fontSize: 11, color: Anju.muted),
                 ),
               ],
             ),

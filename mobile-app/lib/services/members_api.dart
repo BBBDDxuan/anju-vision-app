@@ -1,3 +1,4 @@
+import 'backend_tls.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -9,7 +10,7 @@ import 'settings_store.dart';
 /// Household IDs belong to the connected computer. No face photos are cached here.
 class MembersApi {
   MembersApi(this.settings, {http.Client? client})
-    : _client = client ?? http.Client() {
+    : _client = client ?? backendClient(settings.baseUrl) {
     if (settings.validationError != null || settings.bearerToken.isEmpty) {
       throw const ApiException('请先配置电脑后端地址与访问令牌');
     }

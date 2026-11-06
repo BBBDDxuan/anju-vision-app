@@ -1,3 +1,4 @@
+import 'backend_tls.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -346,7 +347,7 @@ class HttpSafetyRepository implements SafetyRepository {
     http.Client? client,
     this.timeout = const Duration(seconds: 15),
   }) : baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), ''),
-       _client = client ?? http.Client();
+       _client = client ?? backendClient(baseUrl);
   final String baseUrl;
   final String bearerToken;
   final http.Client _client;

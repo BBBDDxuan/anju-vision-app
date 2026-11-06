@@ -151,7 +151,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const SectionTitle('三项守护', caption: '关心家人、留意风险、找回日常'),
+          const SectionTitle('三项守护', caption: '点击查看详细功能'),
           LayoutBuilder(
             builder: (context, constraints) {
               final cards = [
@@ -256,12 +256,11 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _quick(Icons.history_rounded, '事件记录', '每一次回应有迹可循', openHistory),
+              _quick(Icons.history_rounded, '事件记录', openHistory),
               const SizedBox(width: 12),
               _quick(
                 Icons.notifications_outlined,
                 '通知设置',
-                '设置你的守护方式',
                 openSettings ?? () {},
               ),
             ],
@@ -288,18 +287,6 @@ class HomeScreen extends StatelessWidget {
               child: EmptyState(title: '还没有设备', message: '连接服务后，将显示已经注册的家庭设备。'),
             ),
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.favorite_border_rounded,
-                size: 13,
-                color: Anju.muted,
-              ),
-              const SizedBox(width: 6),
-              Text('让关心，跨越距离', style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
         ],
       ),
     );
@@ -377,12 +364,7 @@ class HomeScreen extends StatelessWidget {
       ],
     ),
   );
-  Widget _quick(
-    IconData icon,
-    String title,
-    String caption,
-    VoidCallback onTap,
-  ) => Expanded(
+  Widget _quick(IconData icon, String title, VoidCallback onTap) => Expanded(
     child: Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
@@ -400,11 +382,6 @@ class HomeScreen extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                caption,
-                style: const TextStyle(fontSize: 10, color: Anju.muted),
               ),
             ],
           ),
