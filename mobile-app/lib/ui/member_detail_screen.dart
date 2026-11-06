@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../app_controller.dart';
@@ -24,17 +24,32 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   late final String _scope;
   bool _busy = false, _consent = false;
   String? _message;
+  Uint8List? _trialPhoto;
+  Map<String, dynamic>? _trial;
+  void _discardTrial() {
+    if (_trialPhoto != null) MemoryImage(_trialPhoto!).evict();
+    _trial = null;
+    _trialPhoto = null;
+  }
+
+  @override
+  void dispose() {
+    _discardTrial();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
     _scope = widget.controller.serviceScope;
   }
 
-  Future<void> _enroll(MemberProfile member) async {
-    if (!_consent || _busy) return;
+  Future<void> _enroll(MemberProfile member, {bool trial = false}) async {
+    if ((!trial && !_consent) || _busy) return;
     setState(() {
       _busy = true;
       _message = null;
+      _discardTrial();
     });
     try {
       final picked = await FilePicker.pickFile(
@@ -42,18 +57,36 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         allowedExtensions: ['jpg', 'jpeg', 'png'],
       );
       if (picked == null || !mounted) return;
-      if (picked.path == null) throw StateError('请选择不超过 5 MiB 的本机 JPEG/PNG 照片');
-      final file = File(picked.path!);
-      if (await file.length() > 5 * 1024 * 1024)
+      // Android photo providers may return content:// URIs without a file path.
+      // Read through the picker and bound the stream before sending raw bytes.
+      final size = await picked.length();
+      if (size != null && size > 5 * 1024 * 1024)
         throw StateError('照片超过 5 MiB，请先缩小');
-      final data = await file.readAsBytes();
+      final bytes = BytesBuilder(copy: false);
+      await for (final chunk in picked.readAsByteStream()) {
+        if (bytes.length + chunk.length > 5 * 1024 * 1024)
+          throw StateError('照片超过 5 MiB，请先缩小');
+        bytes.add(chunk);
+      }
+      final data = bytes.takeBytes();
       if (!mounted || widget.controller.serviceScope != _scope) return;
-      await widget.controller.enrollMemberFace(
-        member.id,
-        data,
-        consent: _consent,
-      );
-      if (mounted) setState(() => _message = '人脸资料已录入，可继续选择不同角度的照片');
+      if (trial) {
+        final result = await widget.controller.recognizeMemberFaces(data);
+        if (mounted && widget.controller.serviceScope == _scope) {
+          setState(() {
+            _trialPhoto = data;
+            _trial = result;
+          });
+        }
+      } else {
+        await widget.controller.enrollMemberFace(
+          member.id,
+          data,
+          consent: _consent,
+        );
+        if (mounted && widget.controller.serviceScope == _scope)
+          setState(() => _message = '人脸资料已录入，可继续选择不同角度的照片');
+      }
     } catch (e) {
       if (mounted) setState(() => _message = '$e');
     } finally {
@@ -84,6 +117,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     setState(() {
       _busy = true;
       _message = null;
+      _discardTrial();
     });
     try {
       await widget.controller.clearMemberFaces(member.id);
@@ -218,6 +252,13 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                             ),
                             label: Text(_busy ? '正在处理' : '选择照片录入'),
                           ),
+                          OutlinedButton.icon(
+                            onPressed: _busy || !ready || !c.canEditMembers
+                                ? null
+                                : () => _enroll(member, trial: true),
+                            icon: const Icon(Icons.person_search_outlined),
+                            label: const Text('选择照片试识别'),
+                          ),
                           if (member.faceSampleCount > 0)
                             OutlinedButton(
                               onPressed: _busy || !c.canEditMembers
@@ -226,6 +267,20 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                               child: const Text('清除人脸资料'),
                             ),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '试识别会与全部已录入成员比对，不会新增样本。仅支持 JPEG/PNG；HEIC 照片请先转换。',
+                      ),
+                    ],
+                    if (_trial != null) ...[
+                      const SizedBox(height: 12),
+                      if (_trialPhoto != null)
+                        _FaceTrialPreview(photo: _trialPhoto!, result: _trial!),
+                      FaceTrialResult(result: _trial!),
+                      TextButton(
+                        onPressed: () => setState(_discardTrial),
+                        child: const Text('收起试识别'),
                       ),
                     ],
                     if (_busy)
@@ -271,6 +326,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   event: event,
                   onTap: () => widget.openEvent(event.id),
                   deviceLabel: c.associationLabel(event),
+                  personLabel: c.personLabelFor(event),
                 ),
             ],
           ),
@@ -278,4 +334,92 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       },
     ),
   );
+}
+
+class FaceTrialResult extends StatelessWidget {
+  const FaceTrialResult({super.key, required this.result});
+  final Map<String, dynamic> result;
+  @override
+  Widget build(BuildContext context) {
+    final faces = (result['faces'] as List? ?? []).whereType<Map>().toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(faces.isEmpty ? '未检测到可用人脸，请换一张清晰照片。' : '检测到 ${faces.length} 张人脸'),
+        for (final (index, face) in faces.indexed)
+          Text(
+            face['status'] == 'matched' &&
+                    face['member_id'] != null &&
+                    (face['name']?.toString().trim().isNotEmpty ?? false)
+                ? '${index + 1} · ${face['name']}（人脸识别候选，请核对）'
+                : '${index + 1} · 身份未确认',
+          ),
+      ],
+    );
+  }
+}
+
+class _FaceTrialPreview extends StatelessWidget {
+  const _FaceTrialPreview({required this.photo, required this.result});
+  final Uint8List photo;
+  final Map<String, dynamic> result;
+  @override
+  Widget build(BuildContext context) {
+    final faces = (result['faces'] as List? ?? []).whereType<Map>().toList();
+    return Stack(
+      children: [
+        Image.memory(
+          photo,
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
+          errorBuilder: (_, _, _) => const Text('照片预览无法显示，请查看识别结果。'),
+        ),
+        Positioned.fill(
+          child: LayoutBuilder(
+            builder: (_, size) => Stack(
+              children: [
+                for (final (index, face) in faces.indexed)
+                  if (face['bbox'] case [num x1, num y1, num x2, num y2]
+                      when x1 >= 0 &&
+                          y1 >= 0 &&
+                          x2 <= 1 &&
+                          y2 <= 1 &&
+                          x2 > x1 &&
+                          y2 > y1)
+                    Positioned(
+                      left: x1 * size.maxWidth,
+                      top: y1 * size.maxHeight,
+                      width: (x2 - x1) * size.maxWidth,
+                      height: (y2 - y1) * size.maxHeight,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: face['status'] == 'matched'
+                                ? Anju.green
+                                : Colors.orange,
+                            width: 2,
+                          ),
+                        ),
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: ColoredBox(
+                            color: Colors.black87,
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

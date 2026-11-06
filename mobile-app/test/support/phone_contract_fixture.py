@@ -39,6 +39,11 @@ with tempfile.TemporaryDirectory(prefix='anju-b-contract-') as directory:
    safety_repo=SimpleNamespace(s=SimpleNamespace(user_token='fixture-internal-not-production')),
    transport=httpx.MockTransport(upstream))
  app.state.alert_sources.sync=lambda:None
+ # Deterministic embeddings only on this isolated fixture. Transport/lifecycle
+ # checks must never enroll a real person or depend on detector accuracy.
+ feature=np.zeros(128,dtype='<f4');feature[0]=1
+ app.state.face_recognition._features=lambda data:[{'feature':feature,'bbox':[.1,.1,.8,.8],
+   'detection_score':.99,'quality':'usable'}]
  app.state.alert_sources.status={source:{'ready':True} for source in ('live_camera','uploaded_recording')}
  frame=root/'synthetic.jpg'
  assert cv2.imwrite(str(frame),np.zeros((32,32,3),dtype=np.uint8))

@@ -825,12 +825,35 @@ class SafetyController extends ChangeNotifier {
       await _acceptRemoteMembers(updated, generation, mutation: mutation);
   }
 
+  Future<Map<String, dynamic>> recognizeMemberFaces(Uint8List image) async {
+    final api = _requireMembersApi(), generation = _generation;
+    final result = await api.recognize(image);
+    if (_disposed || generation != _generation)
+      throw const ApiException('后端连接已改变，请重新试识别');
+    return result;
+  }
+
   Future<void> clearMemberFaces(String id) async {
     final api = _requireMembersApi(), generation = _generation;
     ++_memberMutation;
     await api.clearFaces(id);
     if (_disposed || generation != _generation) return;
     final mutation = ++_memberMutation;
+    // A successful DELETE revokes cached identities even if the next GET fails.
+    await _acceptRemoteMembers(
+      members
+          .map(
+            (member) => member.id == id
+                ? member.copyWith(
+                    faceSampleCount: 0,
+                    revision: member.revision + 1,
+                  )
+                : member,
+          )
+          .toList(),
+      generation,
+      mutation: mutation,
+    );
     final updated = await api.members();
     if (!_disposed && generation == _generation && mutation == _memberMutation)
       await _acceptRemoteMembers(updated, generation, mutation: mutation);
@@ -972,7 +995,22 @@ class SafetyController extends ChangeNotifier {
       return id == 'unassigned' || memberById(id!) == null ? null : id;
     }
     final marked = event.details['member_id']?.toString();
-    if (marked != null && memberById(marked) != null) return marked;
+    if (usesSharedMembers && eventScope(event) != serviceScope) return null;
+    if (marked != null && memberById(marked) != null) {
+      final identity = event.details['face_identity'];
+      if (identity is Map) {
+        final member = memberById(marked)!;
+        // Cached alerts must not keep a revoked identity after profile sync.
+        if (!{'suspected_fall', 'help_requested'}.contains(event.eventType) ||
+            identity['status'] != 'matched' ||
+            identity['member_id'] != marked ||
+            member.faceSampleCount == 0 ||
+            (identity['revision'] != null &&
+                identity['revision'] != member.revision))
+          return null;
+      }
+      return marked;
+    }
     // Shared-camera ranges cannot establish a person identity.
     if (usesSharedMembers) return null;
     final scope = eventScope(event);
@@ -1019,6 +1057,15 @@ class SafetyController extends ChangeNotifier {
         )
         ? '设备与跟踪编号绑定'
         : '设备范围关联';
+  }
+
+  String? personLabelFor(SafetyEvent event) {
+    if (!{'suspected_fall', 'help_requested'}.contains(event.eventType))
+      return null;
+    final id = memberIdFor(event);
+    return id == null
+        ? '身份未确认'
+        : '${memberById(id)!.displayName} · ${associationLabel(event)}';
   }
 
   Future<void> associateMember(SafetyEvent event, String? memberId) =>

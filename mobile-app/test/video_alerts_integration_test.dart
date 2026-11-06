@@ -37,6 +37,15 @@ class VideoFixture {
           'epistemic_type': 'observed',
           'acknowledged': i == 0 && acknowledged,
           'evidence_ids': ['e$i'],
+          'member_id': i == 0 ? 'fixture-member' : null,
+          'face_identity': i == 0
+              ? {
+                  'status': 'matched',
+                  'member_id': 'fixture-member',
+                  'name': '测试家人',
+                  'revision': 2,
+                }
+              : {'status': 'unknown', 'member_id': null},
         },
       {'id': 'fixture', 'action': 'fall', 'is_mock': true},
     ],
@@ -151,6 +160,8 @@ void main() {
         isTrue,
       );
       expect(events.every((e) => e.occurredAt == null), isTrue);
+      expect(events.first.details['member_id'], 'fixture-member');
+      expect((events.first.details['face_identity'] as Map)['revision'], 2);
       final again = await api.safetyEvents();
       expect(again.map((e) => e.id), events.map((e) => e.id));
       expect(await api.frame(events[1].evidenceId!), [255, 216, 255]);

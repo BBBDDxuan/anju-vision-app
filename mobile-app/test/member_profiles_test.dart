@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +13,8 @@ import 'package:elder_safety_mobile/services/api.dart';
 import 'package:elder_safety_mobile/services/members_api.dart';
 import 'package:elder_safety_mobile/services/settings_store.dart';
 import 'package:elder_safety_mobile/ui/members_screen.dart';
+import 'package:elder_safety_mobile/ui/member_detail_screen.dart';
+import 'package:elder_safety_mobile/ui/widgets.dart';
 import 'fakes.dart';
 
 const connection = AppSettings(
@@ -31,7 +34,88 @@ Future<void> until(bool Function() condition) async {
   fail('Timed out');
 }
 
+final class PickedPhoto extends PlatformFile {
+  PickedPhoto(this.bytes);
+  final Uint8List bytes;
+  @override
+  String get name => 'synthetic.png';
+  @override
+  Uri get uri => Uri.parse('content://synthetic-photos/photo');
+  @override
+  Never get xFile => throw UnimplementedError();
+  @override
+  int? lengthSync() => bytes.length;
+  @override
+  Future<int?> length() async => bytes.length;
+  @override
+  Future<Uint8List> readAsBytes() async => bytes;
+  @override
+  Stream<Uint8List> readAsByteStream() => Stream.value(bytes);
+}
+
+class PhotoPicker extends FilePickerPlatform {
+  PhotoPicker(this.bytes);
+  final Uint8List bytes;
+  @override
+  Future<PlatformFile?> pickFile({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    DarwinOptions darwinOptions = const DarwinOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
+  }) async => PickedPhoto(bytes);
+}
+
 void main() {
+  test(
+    'trial uses raw image API and disabled errors do not become token errors',
+    () async {
+      final photo = Uint8List.fromList([255, 216, 255, 1]);
+      final api = MembersApi(
+        connection,
+        client: MockClient((r) async {
+          expect(r.url.path, '/api/faces/recognize');
+          expect(r.headers['Content-Type'], 'image/jpeg');
+          expect(r.bodyBytes, photo);
+          return reply({
+            'error': {'code': 'FACE_RECOGNITION_DISABLED'},
+          }, 403);
+        }),
+      );
+      addTearDown(api.close);
+      await expectLater(
+        api.recognize(photo),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            contains('尚未启用人脸识别'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test('web label styles survive App editing and cache serialization', () {
+    final member = MemberProfile.fromJson({
+      'id': 'm',
+      'number': 1,
+      'name': '家人',
+      'label_color': '#12ab34',
+      'label_letter': '家',
+      'revision': 9,
+    });
+    final saved = member.copyWith(name: '新称呼').toJson();
+    expect(saved['label_color'], '#12ab34');
+    expect(saved['label_letter'], '家');
+    expect(saved['revision'], 9);
+  });
   test(
     'member API same origin, auth, revision, photo consent and input bounds',
     () async {
@@ -170,11 +254,39 @@ void main() {
         ...event.toJson(),
         'details': {
           'member_id': 'server-1',
-          'face_identity': {'status': 'matched'},
+          'face_identity': {
+            'status': 'matched',
+            'member_id': 'server-1',
+            'revision': 1,
+          },
         },
       });
       expect(c.memberIdFor(identified), 'server-1');
       expect(c.associationLabel(identified), contains('请核对'));
+      for (final identity in [
+        {'status': 'unknown', 'member_id': 'server-1'},
+        {'status': 'matched', 'member_id': 'another'},
+        {'status': 'matched', 'member_id': 'server-1', 'revision': 0},
+      ]) {
+        expect(
+          c.memberIdFor(
+            SafetyEvent.fromJson({
+              ...identified.toJson(),
+              'details': {'member_id': 'server-1', 'face_identity': identity},
+            }),
+          ),
+          isNull,
+        );
+      }
+      expect(
+        c.memberIdFor(
+          SafetyEvent.fromJson({
+            ...identified.toJson(),
+            'event_type': 'fire_detected',
+          }),
+        ),
+        isNull,
+      );
       await c.associateMember(identified, null);
       expect(c.memberIdFor(identified), isNull);
       await c.saveMember(c.members.single.copyWith(name: '王奶奶'));
@@ -341,6 +453,268 @@ void main() {
       await refresh;
       expect(c.members.single.name, '新名称');
       expect(c.members.single.revision, 2);
+    },
+  );
+
+  test(
+    'clearing templates immediately revokes cached face identity even if refresh fails',
+    () async {
+      var member = const MemberProfile(
+        id: 'm',
+        number: 1,
+        name: '家人',
+        revision: 1,
+        faceSampleCount: 3,
+      );
+      var cleared = false;
+      final c = SafetyController(
+        store: MemorySettingsStore()..settings = connection,
+        repositoryFactory: (_) => RecordingRepository(),
+        videoApiFactory: emptyVideoApi,
+        membersApiFactory: (s) => MembersApi(
+          s,
+          client: MockClient((r) async {
+            if (r.url.path == '/api/faces/status')
+              return reply({'enabled': true, 'ready': true});
+            if (r.method == 'DELETE') {
+              cleared = true;
+              return reply({'deleted': true});
+            }
+            if (cleared) return reply({}, 503);
+            return reply({
+              'members': [member.toJson()],
+            });
+          }),
+        ),
+      );
+      addTearDown(c.dispose);
+      await c.initialize();
+      await until(() => !c.memberSyncing && c.memberBackendAvailable);
+      final event = SafetyEvent.fromJson({
+        ...eventJson(id: 'cached-face'),
+        'event_type': 'suspected_fall',
+        'details': {
+          'member_id': 'm',
+          'face_identity': {
+            'status': 'matched',
+            'member_id': 'm',
+            'revision': 1,
+          },
+        },
+      });
+      expect(c.personLabelFor(event), contains('家人'));
+      await expectLater(c.clearMemberFaces('m'), throwsA(isA<ApiException>()));
+      expect(c.memberIdFor(event), isNull);
+      expect(c.personLabelFor(event), '身份未确认');
+    },
+  );
+
+  testWidgets(
+    'phone face flow: consent, trial, enroll, clear and compact layout',
+    (t) async {
+      t.view.physicalSize = const Size(320, 900);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.resetPhysicalSize);
+      addTearDown(t.view.resetDevicePixelRatio);
+      final png = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      );
+      final picker = FilePickerPlatform.instance;
+      FilePickerPlatform.instance = PhotoPicker(png);
+      addTearDown(() {
+        FilePickerPlatform.instance = picker;
+      });
+      var member = const MemberProfile(
+        id: 'phone-face',
+        number: 1,
+        name: '测试家人',
+        revision: 1,
+      );
+      var enrolls = 0, trials = 0;
+      final c = SafetyController(
+        store: MemorySettingsStore()..settings = connection,
+        repositoryFactory: (_) => RecordingRepository(),
+        videoApiFactory: emptyVideoApi,
+        membersApiFactory: (s) => MembersApi(
+          s,
+          client: MockClient((r) async {
+            if (r.url.path == '/api/faces/status')
+              return reply({'enabled': true, 'ready': true});
+            if (r.method == 'POST') {
+              expect(r.bodyBytes, png);
+              expect(r.headers['Content-Type'], 'image/png');
+              if (r.url.path.endsWith('/recognize')) {
+                trials++;
+                return reply({
+                  'face_count': 2,
+                  'faces': [
+                    {
+                      'status': 'matched',
+                      'member_id': member.id,
+                      'name': member.name,
+                      'bbox': [.1, .1, .45, .8],
+                    },
+                    {
+                      'status': 'unknown',
+                      'member_id': null,
+                      'bbox': [.55, .1, .9, .8],
+                    },
+                  ],
+                });
+              }
+              expect(r.url.queryParameters['consent'], 'true');
+              enrolls++;
+              member = member.copyWith(
+                faceSampleCount: 1,
+                revision: member.revision + 1,
+              );
+              return reply({'member': member.toJson()}, 201);
+            }
+            if (r.method == 'DELETE') {
+              member = member.copyWith(
+                faceSampleCount: 0,
+                revision: member.revision + 1,
+              );
+              return reply({'deleted': true});
+            }
+            return reply({
+              'members': [member.toJson()],
+            });
+          }),
+        ),
+      );
+      addTearDown(c.dispose);
+      await c.initialize();
+      await t.pumpAndSettle();
+      c.setActive(false);
+      await t.pumpWidget(
+        MaterialApp(
+          builder: (ctx, child) => MediaQuery(
+            data: MediaQuery.of(
+              ctx,
+            ).copyWith(textScaler: const TextScaler.linear(1.8)),
+            child: child!,
+          ),
+          home: MemberDetailScreen(
+            controller: c,
+            memberId: member.id,
+            openEvent: (_) {},
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final enroll = find.widgetWithText(FilledButton, '选择照片录入');
+      expect(t.widget<FilledButton>(enroll).onPressed, isNull);
+      final trial = find.text('选择照片试识别');
+      await t.ensureVisible(trial);
+      await t.pumpAndSettle();
+      await t.tap(trial);
+      await t.pumpAndSettle();
+      expect(trials, 1);
+      expect(enrolls, 0);
+      expect(find.text('1 · 测试家人（人脸识别候选，请核对）'), findsOneWidget);
+      expect(find.text('2 · 身份未确认'), findsOneWidget);
+      await t.ensureVisible(find.byType(Checkbox));
+      await t.pumpAndSettle();
+      await t.tap(find.byType(Checkbox));
+      await t.pumpAndSettle();
+      await t.ensureVisible(enroll);
+      await t.pumpAndSettle();
+      await t.tap(enroll);
+      await t.pumpAndSettle();
+      expect(enrolls, 1);
+      expect(c.members.single.faceSampleCount, 1);
+      await t.ensureVisible(find.text('清除人脸资料'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('清除人脸资料'));
+      await t.pumpAndSettle();
+      await t.tap(find.widgetWithText(FilledButton, '清除'));
+      await t.pumpAndSettle();
+      expect(c.members.single.faceSampleCount, 0);
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EventTile(
+              event: SafetyEvent.fromJson({
+                ...eventJson(),
+                'event_type': 'suspected_fall',
+              }),
+              onTap: () {},
+              personLabel: '测试家人 · 人脸识别候选 · 请核对',
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(find.text('测试家人 · 人脸识别候选 · 请核对'), findsOneWidget);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'App editor retains original revision and unsaved edits after a web conflict',
+    (t) async {
+      var remote = const MemberProfile(
+        id: 'edited',
+        number: 1,
+        name: '旧名字',
+        revision: 1,
+      );
+      final revisions = <int>[];
+      final c = SafetyController(
+        store: MemorySettingsStore()..settings = connection,
+        repositoryFactory: (_) => RecordingRepository(),
+        videoApiFactory: emptyVideoApi,
+        membersApiFactory: (s) => MembersApi(
+          s,
+          client: MockClient((r) async {
+            if (r.url.path == '/api/faces/status')
+              return reply({'enabled': false});
+            if (r.method == 'PUT') {
+              revisions.add(jsonDecode(r.body)['revision'] as int);
+              return reply({
+                'error': {'code': 'HOUSEHOLD_REVISION_CONFLICT'},
+              }, 409);
+            }
+            return reply({
+              'members': [remote.toJson()],
+            });
+          }),
+        ),
+      );
+      addTearDown(c.dispose);
+      await c.initialize();
+      c.setActive(false);
+      await t.pumpAndSettle();
+      await t.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => editMember(context, c, c.members.single),
+                child: const Text('打开编辑'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('打开编辑'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField).first, '手机未保存内容');
+      remote = remote.copyWith(name: '网页新名字', revision: 2);
+      await c.refreshMembers(force: true);
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.text('保存档案'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('保存档案'));
+      await t.pumpAndSettle();
+      expect(revisions, [1]);
+      expect(find.text('手机未保存内容'), findsOneWidget);
+      expect(find.textContaining('档案已被其他设备修改'), findsOneWidget);
+      expect(c.members.single.name, '网页新名字');
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox.shrink());
     },
   );
 

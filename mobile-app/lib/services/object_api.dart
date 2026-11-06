@@ -312,6 +312,8 @@ class ObjectApi {
             'alert_id': alert['id'],
             'start_ms': alert['start_ms'],
             'end_ms': alert['end_ms'],
+            'member_id': alert['member_id'],
+            'face_identity': alert['face_identity'],
           },
         ),
       );

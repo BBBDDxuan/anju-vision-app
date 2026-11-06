@@ -379,10 +379,12 @@ class EventTile extends StatelessWidget {
     required this.event,
     required this.onTap,
     this.deviceLabel,
+    this.personLabel,
   });
   final SafetyEvent event;
   final VoidCallback onTap;
   final String? deviceLabel;
+  final String? personLabel;
   @override
   Widget build(BuildContext context) {
     final color = event.resolved ? Anju.green : severityColor(event.severity);
@@ -430,6 +432,13 @@ class EventTile extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 7),
+                      if (personLabel != null) ...[
+                        Text(
+                          personLabel!,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                       Text(
                         eventSourceLabel(event, deviceLabel ?? event.deviceId),
                         maxLines: 1,

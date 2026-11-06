@@ -139,6 +139,7 @@ class _RisksScreenState extends State<RisksScreen> {
             EventTile(
               event: e,
               deviceLabel: c.nameForDevice(e.deviceId),
+              personLabel: c.personLabelFor(e),
               onTap: () => widget.openEvent(e.id),
             ),
           SectionTitle(
@@ -153,6 +154,7 @@ class _RisksScreenState extends State<RisksScreen> {
             EventTile(
               event: e,
               deviceLabel: c.nameForDevice(e.deviceId),
+              personLabel: c.personLabelFor(e),
               onTap: () => widget.openEvent(e.id),
             ),
           if (!c.events.any((e) => e.eventType == 'device_offline'))

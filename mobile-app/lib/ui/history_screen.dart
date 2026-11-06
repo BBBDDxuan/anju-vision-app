@@ -204,6 +204,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             EventTile(
               event: e,
               deviceLabel: c.nameForDevice(e.deviceId),
+              personLabel: c.personLabelFor(e),
               onTap: () => widget.openEvent(e.id),
             ),
           const Padding(

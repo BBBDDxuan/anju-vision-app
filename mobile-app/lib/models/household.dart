@@ -30,8 +30,10 @@ class MemberProfile {
     this.bindings = const [],
     this.faceSampleCount = 0,
     this.revision = 0,
+    this.labelColor = '',
+    this.labelLetter = '',
   });
-  final String id, name, relationship, notes;
+  final String id, name, relationship, notes, labelColor, labelLetter;
   final int number, faceSampleCount, revision;
   final List<MemberBinding> bindings;
   String get displayName => name.trim().isEmpty ? '成员$number' : name.trim();
@@ -44,12 +46,16 @@ class MemberProfile {
     'bindings': bindings.map((e) => e.toJson()).toList(),
     'face_sample_count': faceSampleCount,
     'revision': revision,
+    if (labelColor.isNotEmpty) 'label_color': labelColor,
+    if (labelLetter.isNotEmpty) 'label_letter': labelLetter,
   };
   factory MemberProfile.fromJson(Map<String, dynamic> j) => MemberProfile(
     id: field(j, 'id'),
     number: (j['number'] as num?)?.toInt() ?? 1,
     faceSampleCount: (j['face_sample_count'] as num?)?.toInt() ?? 0,
     revision: (j['revision'] as num?)?.toInt() ?? 0,
+    labelColor: field(j, 'label_color'),
+    labelLetter: field(j, 'label_letter'),
     name: field(j, 'name'),
     relationship: field(j, 'relationship'),
     notes: field(j, 'notes'),
@@ -73,6 +79,8 @@ class MemberProfile {
     bindings: bindings ?? this.bindings,
     faceSampleCount: faceSampleCount ?? this.faceSampleCount,
     revision: revision ?? this.revision,
+    labelColor: labelColor,
+    labelLetter: labelLetter,
   );
 }
 

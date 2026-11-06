@@ -229,10 +229,23 @@ class MembersScreenState extends State<MembersScreen> {
                     padding: EdgeInsets.zero,
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Anju.light,
+                        backgroundColor:
+                            RegExp(
+                              r'^#[0-9a-fA-F]{6}$',
+                            ).hasMatch(member.labelColor)
+                            ? Color(
+                                0xff000000 |
+                                    int.parse(
+                                      member.labelColor.substring(1),
+                                      radix: 16,
+                                    ),
+                              )
+                            : Anju.green,
                         child: Text(
-                          member.displayName.characters.first,
-                          style: const TextStyle(color: Anju.green),
+                          member.labelLetter.isNotEmpty
+                              ? member.labelLetter
+                              : member.displayName.characters.first,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
                       title: Text(
@@ -274,6 +287,7 @@ class MembersScreenState extends State<MembersScreen> {
                   for (final event in personEvents.take(60))
                     EventTile(
                       event: event,
+                      personLabel: c.personLabelFor(event),
                       onTap: () => widget.openEvent(event.id),
                       deviceLabel: c.memberIdFor(event) == null
                           ? '身份未确认'
@@ -320,11 +334,13 @@ class _MemberEditor extends StatefulWidget {
 
 class _MemberEditorState extends State<_MemberEditor> {
   late final TextEditingController _name, _relation, _notes;
+  late final String _scope;
   bool _busy = false;
   String? _error;
   @override
   void initState() {
     super.initState();
+    _scope = widget.controller.serviceScope;
     _name = TextEditingController(text: widget.member.name);
     _relation = TextEditingController(text: widget.member.relationship);
     _notes = TextEditingController(text: widget.member.notes);
@@ -341,10 +357,12 @@ class _MemberEditorState extends State<_MemberEditor> {
   Future<void> _save() async {
     setState(() => _busy = true);
     try {
+      if (widget.controller.serviceScope != _scope)
+        throw StateError('后端已切换，请返回成员列表重新编辑');
       final current = widget.controller.memberById(widget.member.id);
       if (current == null) throw StateError('missing');
       await widget.controller.saveMember(
-        current.copyWith(
+        widget.member.copyWith(
           name: _name.text.trim(),
           relationship: _relation.text.trim(),
           notes: _notes.text.trim(),
@@ -383,6 +401,11 @@ class _MemberEditorState extends State<_MemberEditor> {
     if (yes != true || !mounted) return;
     setState(() => _busy = true);
     try {
+      if (widget.controller.serviceScope != _scope)
+        throw StateError('后端已切换，请返回成员列表');
+      if (widget.controller.memberById(widget.member.id)?.revision !=
+          widget.member.revision)
+        throw StateError('档案已更新，请刷新后重新删除');
       await widget.controller.deleteMember(widget.member.id);
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -404,13 +427,13 @@ class _MemberEditorState extends State<_MemberEditor> {
         ),
         const SizedBox(height: 8),
         Text(
-          '固定编号：成员${widget.member.number} · 档案保存在本机',
+          '固定编号：成员${widget.member.number} · ${widget.controller.usesSharedMembers ? '档案与电脑共享' : '档案保存在本机'}',
           style: const TextStyle(fontSize: 12, color: Anju.muted),
         ),
         const SizedBox(height: 22),
         TextField(
           controller: _name,
-          maxLength: 40,
+          maxLength: widget.controller.usesSharedMembers ? 80 : 40,
           decoration: InputDecoration(
             labelText: '称呼（留空使用默认编号）',
             hintText: '成员${widget.member.number}',
@@ -419,13 +442,13 @@ class _MemberEditorState extends State<_MemberEditor> {
         const SizedBox(height: 14),
         TextField(
           controller: _relation,
-          maxLength: 30,
+          maxLength: widget.controller.usesSharedMembers ? 80 : 30,
           decoration: const InputDecoration(labelText: '与家庭的关系（可选）'),
         ),
         const SizedBox(height: 14),
         TextField(
           controller: _notes,
-          maxLength: 500,
+          maxLength: widget.controller.usesSharedMembers ? 2000 : 500,
           maxLines: 3,
           decoration: const InputDecoration(labelText: '监护备注（可选）'),
         ),
@@ -479,11 +502,13 @@ class _BindingEditorState extends State<_BindingEditor> {
   final _selected = <String>{};
   final _tracks = <String, TextEditingController>{};
   late final List<SafetyDevice> _devices;
+  late final String _scope;
   bool _busy = false;
   String? _error;
   @override
   void initState() {
     super.initState();
+    _scope = widget.controller.serviceScope;
     _devices = [...widget.controller.devices];
     for (final b in widget.member.bindings.where(
       (b) =>
@@ -510,7 +535,9 @@ class _BindingEditorState extends State<_BindingEditor> {
   Future<void> _save() async {
     setState(() => _busy = true);
     try {
-      final current = widget.controller.memberById(widget.member.id)!;
+      if (widget.controller.serviceScope != _scope)
+        throw StateError('后端已切换，请返回成员列表重新编辑');
+      final current = widget.member;
       final preserved = current.bindings.where(
         (b) =>
             b.scope != widget.controller.serviceScope &&

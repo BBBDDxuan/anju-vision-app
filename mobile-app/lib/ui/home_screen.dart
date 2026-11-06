@@ -251,6 +251,7 @@ class HomeScreen extends StatelessWidget {
               event: event,
               onTap: () => openEvent(event.id),
               deviceLabel: controller.nameForDevice(event.deviceId),
+              personLabel: controller.personLabelFor(event),
             ),
           const SizedBox(height: 12),
           Row(

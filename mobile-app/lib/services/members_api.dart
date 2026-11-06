@@ -58,10 +58,6 @@ class MembersApi {
             code = (body['error'] is Map ? body['error']['code'] : body['code'])
                 ?.toString();
           } catch (_) {}
-          if (response.statusCode == 401 || response.statusCode == 403)
-            throw const ApiException('没有成员服务访问权限，请检查连接令牌');
-          if (response.statusCode == 404)
-            throw const ApiException('成员不存在或后端尚未更新，请刷新并确认两端版本');
           const errors = {
             'FACE_SINGLE_REQUIRED': '照片需包含一张清晰人脸，请换一张照片',
             'FACE_ENROLLMENT_QUALITY': '照片需包含一张足够清晰的人脸，请换一张照片',
@@ -74,7 +70,17 @@ class MembersApi {
             'FACE_SAMPLE_LIMIT': '该成员照片数量已达上限，请先清除旧人脸资料',
             'FACE_RECOGNITION_DISABLED': '电脑尚未启用人脸识别，请在后端配置后重试',
             'FACE_MODEL_MISSING': '电脑尚未准备人脸模型，请按后端说明配置',
+            'FACE_LOCAL_ONLY': '电脑尚未配置手机访问令牌，人脸接口仅允许电脑本机访问',
+            'FACE_IMAGE_TYPE': '请选择 JPEG 或 PNG 照片',
+            'FACE_IMAGE_TOO_LARGE': '照片不能为空且不得超过 5 MiB',
+            'FACE_TOO_MANY_FACES': '照片中的人脸过多，请选择人数更少的照片',
+            'FACE_CONSENT_REQUIRED': '请先取得成员同意再录入人脸',
           };
+          if (errors.containsKey(code)) throw ApiException(errors[code]!);
+          if (response.statusCode == 401 || response.statusCode == 403)
+            throw const ApiException('没有成员服务访问权限，请检查连接令牌');
+          if (response.statusCode == 404)
+            throw const ApiException('成员不存在或后端尚未更新，请刷新并确认两端版本');
           throw ApiException(errors[code] ?? '成员操作未成功，请检查照片、后端配置或稍后重试');
         }
         if (bytes.isEmpty) return <String, dynamic>{};
@@ -110,24 +116,40 @@ class MembersApi {
   }
 
   Future<Map<String, dynamic>> status() => request('GET', '/api/faces/status');
+  String _imageType(Uint8List image) {
+    if (image.isEmpty || image.length > 5 * 1024 * 1024)
+      throw const ApiException('请选择不超过 5 MiB 的 JPEG 或 PNG 照片');
+    if (image.length >= 8 &&
+        image[0] == 137 &&
+        image[1] == 80 &&
+        image[2] == 78 &&
+        image[3] == 71 &&
+        image[4] == 13 &&
+        image[5] == 10 &&
+        image[6] == 26 &&
+        image[7] == 10)
+      return 'image/png';
+    if (image.length >= 3 &&
+        image[0] == 255 &&
+        image[1] == 216 &&
+        image[2] == 255)
+      return 'image/jpeg';
+    throw const ApiException('请选择 JPEG 或 PNG 照片');
+  }
+
+  Future<Map<String, dynamic>> recognize(Uint8List image) => request(
+    'POST',
+    '/api/faces/recognize',
+    image: image,
+    imageType: _imageType(image),
+  );
   Future<void> enroll(
     MemberProfile member,
     Uint8List image, {
     required bool consent,
   }) async {
     if (!consent) throw const ApiException('请先取得成员同意再录入人脸');
-    final png =
-        image.length >= 8 &&
-        image[0] == 137 &&
-        image[1] == 80 &&
-        image[2] == 78 &&
-        image[3] == 71;
-    final jpeg =
-        image.length >= 3 &&
-        image[0] == 255 &&
-        image[1] == 216 &&
-        image[2] == 255;
-    if (!png && !jpeg) throw const ApiException('请选择 JPEG 或 PNG 照片');
+    final type = _imageType(image);
     final query = Uri(
       queryParameters: {'name': member.displayName, 'consent': 'true'},
     ).query;
@@ -135,7 +157,7 @@ class MembersApi {
       'POST',
       '/api/faces/members/${Uri.encodeComponent(member.id)}/samples?$query',
       image: image,
-      imageType: png ? 'image/png' : 'image/jpeg',
+      imageType: type,
     );
   }
 

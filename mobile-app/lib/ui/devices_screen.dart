@@ -277,6 +277,7 @@ Future<void> showDeviceDetails(
           EventTile(
             event: e,
             deviceLabel: c.nameForDevice(e.deviceId),
+            personLabel: c.personLabelFor(e),
             onTap: () {
               Navigator.pop(sheet);
               openEvent(e.id);
