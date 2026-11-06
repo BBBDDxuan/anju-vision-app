@@ -29,3 +29,15 @@
 - DELETE /api/manual-tracks/{session}，关闭回放；实时会话由后端管理。
 
 App 修改需要重新构建安装才能使用，刷新网页不会更新手机已安装 APK。此功能的自动化验证使用合成数据，不等同于真实多人摄像头准确率评估。
+
+## 验证范围与本机启动
+
+自动化验证覆盖成员标签、人工选择、失效/重置、事件时刻标签与权限；使用合成候选，不代表真实多人跟踪或危险识别准确率。网页浏览器回归测试：在 website/frontend 运行 `node node_modules/@playwright/test/cli.js test --config playwright.manual.config.ts`，需要本机 Chrome（或 ANJU_BROWSER 指定浏览器路径）。
+
+本机网页由 website/start.ps1 同时提供前后端，默认访问 http://127.0.0.1:8000/。如果仓库虚拟环境的 Python 启动器不可用，可传 `-Python` 指定正常的解释器。当前工作区已验证可运行测试的解释器为 `G:\比赛\AI黑客松\网页美化\Github\.venv\Scripts\python.exe`；例如：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File 'G:\比赛\AI黑客松\GitHub同步\website\start.ps1' -Python 'G:\比赛\AI黑客松\网页美化\Github\.venv\Scripts\python.exe'
+```
+
+手机共享入口仍使用 website/start-phone.ps1（配置就绪后）或在 website 目录用同一解释器运行 `scripts/phone_server.py --address <电脑局域网IPv4>`；手机填共享入口地址和已有令牌。旧录像必须重新执行安全分析才会产生人物跟踪索引。App 源码已修改，当前配置的移动构建工具目录没有 SDK/JDK、仓库没有原签名配置，本轮未生成新版 APK。
