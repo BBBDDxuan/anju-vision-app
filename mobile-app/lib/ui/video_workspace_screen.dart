@@ -8,6 +8,7 @@ import '../models/household.dart';
 import '../models/unified_alert.dart';
 import '../services/api.dart';
 import '../services/media_api.dart';
+import '../services/media_proxy.dart';
 import '../services/object_api.dart';
 import 'objects_screen.dart' show EvidenceFrame, ObjectReplayScreen;
 import 'web_workspace_screen.dart';
@@ -51,6 +52,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
   UploadCancellation? _cancellation;
   Timer? _timer;
   VideoPlayerController? _player;
+  MediaProxy? _media;
   bool get _running => {'queued', 'running'}.contains(_job?['status']);
   @override
   void initState() {
@@ -383,9 +385,9 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
     try {
       var player = _player;
       if (player == null) {
+        final media = _media ??= MediaProxy(_api.config);
         player = VideoPlayerController.networkUrl(
-          _api.videoUri(id),
-          httpHeaders: _api.headers,
+          await media.uri('/media/videos/${Uri.encodeComponent(id)}'),
         );
         _player = player;
         await player.initialize();
@@ -445,6 +447,7 @@ class _VideoWorkspaceScreenState extends State<VideoWorkspaceScreen>
     _timer?.cancel();
     _question.dispose();
     _player?.dispose();
+    unawaited(_media?.close());
     _api.close();
     super.dispose();
   }

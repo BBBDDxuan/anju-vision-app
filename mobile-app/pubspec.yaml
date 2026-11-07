@@ -1,7 +1,7 @@
 name: elder_safety_mobile
 description: 安居视界，面向家属的居家安全事件提醒与协作应用。
 publish_to: none
-version: 1.5.4+4021
+version: 1.5.5+4022
 
 environment:
   sdk: '>=3.8.0 <4.0.0'

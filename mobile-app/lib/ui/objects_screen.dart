@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../app_controller.dart';
 import '../models/household.dart';
+import '../services/media_proxy.dart';
 import '../services/object_api.dart';
 import 'widgets.dart';
 import 'media_hub_screen.dart';
@@ -739,17 +741,17 @@ class EvidenceVideo extends StatefulWidget {
 
 class _EvidenceVideoState extends State<EvidenceVideo> {
   VideoPlayerController? _player;
+  MediaProxy? _media;
   String? _error;
   bool _busy = false;
   Future<void> _start() async {
     setState(() => _busy = true);
     try {
-      final player = VideoPlayerController.networkUrl(
-        widget.playbackPath == null
-            ? widget.api.videoUri(widget.videoId)
-            : widget.api.uri(widget.playbackPath!),
-        httpHeaders: widget.api.headers,
-      );
+      final media = _media ??= MediaProxy(widget.api.config);
+      final path =
+          widget.playbackPath ??
+          '/media/videos/${Uri.encodeComponent(widget.videoId)}';
+      final player = VideoPlayerController.networkUrl(await media.uri(path));
       _player = player;
       await player.initialize();
       if (!mounted) return;
@@ -774,6 +776,7 @@ class _EvidenceVideoState extends State<EvidenceVideo> {
   @override
   void dispose() {
     _player?.dispose();
+    unawaited(_media?.close());
     super.dispose();
   }
 
