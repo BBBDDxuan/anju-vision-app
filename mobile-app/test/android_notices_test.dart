@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:elder_safety_mobile/app.dart';
 import 'package:elder_safety_mobile/app_controller.dart';
 import 'package:elder_safety_mobile/services/android_notices.dart';
 import 'package:elder_safety_mobile/ui/settings_screen.dart';
@@ -59,6 +62,59 @@ void main() {
       ]);
       expect(calls.every((call) => call.arguments == null), isTrue);
     },
+  );
+
+  testWidgets(
+    'family sign-in requests system notifications and My displays installed version',
+    (tester) async => withEmptyVideoHttp(() async {
+      tester.view.physicalSize = const Size(420, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final messenger = tester.binding.defaultBinaryMessenger;
+      final requests = <MethodCall>[];
+      messenger.setMockMethodCallHandler(notificationChannel, (call) async {
+        if (call.method == 'requestPermission') {
+          requests.add(call);
+          return statusMap(permission: false);
+        }
+        return null;
+      });
+      const updates = MethodChannel('elder_safety/app_updates');
+      final installed = Completer<Map<String, Object>>();
+      messenger.setMockMethodCallHandler(
+        updates,
+        (call) async => call.method == 'info' ? installed.future : null,
+      );
+      addTearDown(() => messenger.setMockMethodCallHandler(updates, null));
+      final controller = SafetyController(
+        store: MemorySettingsStore(),
+        videoApiFactory: emptyVideoApi,
+      );
+      await tester.pumpWidget(
+        ElderSafetyApp(controller: controller, accountId: 'test-account'),
+      );
+      await tester.pumpAndSettle();
+      expect(requests.single.arguments, {'automatic': true});
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('我的'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('版本未知'), findsOneWidget);
+      installed.complete({
+        'version_name': '9.8.7',
+        'version_code': 321,
+        'package_name': 'com.eldersafety.elder_safety_mobile',
+        'abis': ['arm64-v8a'],
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('v9.8.7'), findsOneWidget);
+      expect(requests.length, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    }),
   );
 
   test(

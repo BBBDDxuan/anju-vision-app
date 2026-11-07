@@ -1,7 +1,7 @@
 name: elder_safety_mobile
 description: 安居视界，面向家属的居家安全事件提醒与协作应用。
 publish_to: none
-version: 1.5.0+4017
+version: 1.5.4+4021
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
@@ -16,6 +16,7 @@ dependencies:
   firebase_messaging: ^17.0.1
   flutter_secure_storage: ^11.2.0
   http: ^1.6.0
+  crypto: ^3.0.8
   video_player: ^2.14.1
   file_picker: ^13.3.2
   webview_flutter: ^4.14.1

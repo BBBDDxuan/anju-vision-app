@@ -151,9 +151,12 @@ class MainActivity : FlutterActivity() {
                 "status" -> { createChannel(); result.success(notificationStatus()) }
                 "requestPermission" -> {
                     createChannel()
+                    val automatic = call.argument<Boolean>("automatic") == true
+                    val prompts = getSharedPreferences("notification_permissions", MODE_PRIVATE)
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                         ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-                            PackageManager.PERMISSION_GRANTED) {
+                            PackageManager.PERMISSION_GRANTED ||
+                        (automatic && prompts.getBoolean("permission_requested", false))) {
                         result.success(notificationStatus())
                     } else if (permissionResult != null) {
                         result.error("PERMISSION_PENDING", "通知权限申请正在进行", null)
@@ -161,6 +164,7 @@ class MainActivity : FlutterActivity() {
                         permissionResult = result
                         try {
                             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), notificationPermissionRequest)
+                            prompts.edit().putBoolean("permission_requested", true).apply()
                         } catch (_: Exception) {
                             permissionResult = null
                             result.error("PERMISSION_FAILED", "无法申请通知权限，请打开系统设置", null)
@@ -203,7 +207,8 @@ class MainActivity : FlutterActivity() {
                             val notice = NotificationCompat.Builder(this, channelId)
                                 .setSmallIcon(R.drawable.ic_stat_safety)
                                 .setContentTitle("居家安全提醒")
-                                .setContentText("检测到疑似危险，请打开应用查看并确认。")
+                                .setContentText(if (scope != null) "一条安全告警已复核确认，请打开应用查看。"
+                                    else "检测到疑似危险，请打开应用查看并确认。")
                                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

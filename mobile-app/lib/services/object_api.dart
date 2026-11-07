@@ -126,6 +126,8 @@ class ObjectApi {
     Map<String, dynamic>? body,
     Duration? requestTimeout,
   }) async {
+    final cameraRequest =
+        path.startsWith('/api/monitoring/camera') || path == '/api/lan/cameras';
     final request = http.Request(method, uri(path))..followRedirects = false;
     request.headers.addAll({...headers, 'Accept': 'application/json'});
     if (body != null) {
@@ -156,7 +158,7 @@ class ObjectApi {
           'CAMERA_STREAM_UNAVAILABLE' => '摄像头端口可达但无法取流，请检查 RTSP 服务、视频路径及连接数',
           'CAMERA_PROBE_MISSING' => '后端取流检查工具不可用，请检查电脑上的 FFprobe 配置',
           'CAMERA_UNREACHABLE' => '电脑后端无法连接摄像头，请检查电脑到摄像头的网络和 RTSP 端口',
-          'CAMERA_ALERT_RELAY_MISSING' => '摄像头告警身份未配置，请由后端负责人重新运行手机服务配置',
+          'CAMERA_ALERT_RELAY_MISSING' => '电脑后端缺少摄像头告警设备身份，请检查告警转发配置',
           'CAMERA_RUNTIME_MISSING' => '电脑上的摄像头模型运行环境未就绪',
           'TRANSCODE_FAILED' => '视频转码失败，请由后端检查 FFmpeg 与编码兼容性',
           'MODEL_NOT_CONFIGURED' ||
@@ -174,8 +176,18 @@ class ObjectApi {
           'EMPTY_CHUNK' => '收到的视频片段为空，请重新选择手机本地视频后上传',
           _ => null,
         };
+        final cameraError = !cameraRequest
+            ? null
+            : switch (response.statusCode) {
+                401 => '登录已失效，请重新登录后再操作摄像头',
+                403 => '没有操作摄像头的权限，请检查账号和电脑服务模式',
+                404 || 405 => '当前电脑服务未提供此摄像头接口，请更新并重启电脑后端',
+                422 => '摄像头参数无效，请核对 IP、端口、设备账号、密码和视频路径',
+                _ => '摄像头操作失败（HTTP ${response.statusCode}），请检查电脑后端日志',
+              };
         throw ApiException(
           (known ??
+                  cameraError ??
                   switch (response.statusCode) {
                     400 =>
                       utf8
@@ -201,9 +213,13 @@ class ObjectApi {
       }
       return response;
     } on TimeoutException {
-      throw const ApiException('录像服务响应超时，请检查地址与网络');
+      throw ApiException(
+        cameraRequest ? '摄像头请求超时，请检查电脑后端和摄像头网络' : '录像服务响应超时，请检查地址与网络',
+      );
     } on http.ClientException {
-      throw const ApiException('无法连接录像服务，请检查网络与服务地址');
+      throw ApiException(
+        cameraRequest ? '无法连接电脑后端，请检查电脑服务和网络' : '无法连接录像服务，请检查网络与服务地址',
+      );
     }
   }
 

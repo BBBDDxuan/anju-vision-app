@@ -63,14 +63,14 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   void didUpdateWidget(covariant CameraScreen old) {
     super.didUpdateWidget(old);
-    if (old.active && !widget.active) unawaited(_stop());
+    if (old.active && !widget.active) unawaited(_disconnectPreview());
     if (!old.active && widget.active) _startStatusPolling();
   }
 
   void _controllerChanged() {
     if (_backendScope == _scope) return;
     _backendScope = _scope;
-    unawaited(_stop());
+    unawaited(_disconnectPreview());
     _server = null;
     _message = null;
     _statusError = null;
@@ -97,7 +97,7 @@ class _CameraScreenState extends State<CameraScreen>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       _foreground = false;
-      unawaited(_stop());
+      unawaited(_disconnectPreview());
     } else if (state == AppLifecycleState.resumed) {
       _foreground = true;
       _startStatusPolling();
@@ -143,9 +143,13 @@ class _CameraScreenState extends State<CameraScreen>
         _password.clear();
         _message = '已填写摄像头 IP 和默认取流参数，请输入设备密码。';
       });
+    } on ApiException catch (error) {
+      if (mounted && scope == _scope) {
+        setState(() => _message = error.message);
+      }
     } catch (_) {
       if (mounted && scope == _scope) {
-        setState(() => _message = '搜索失败，请确认已连接新版后端，或手动填写 IP。');
+        setState(() => _message = '搜索摄像头失败，可以手动填写 IP。');
       }
     } finally {
       api.close();
@@ -215,7 +219,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   // Disconnect only the phone preview. Backend monitoring has an explicit stop.
-  Future<void> _stop() async {
+  Future<void> _disconnectPreview() async {
     _generation++;
     _invalidateStatus();
     _busy = false;
@@ -262,8 +266,8 @@ class _CameraScreenState extends State<CameraScreen>
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('停止后端监护？'),
-          content: const Text('所有连接此后端的手机都将停止接收该摄像头的新告警。'),
+          title: const Text('关闭摄像头？'),
+          content: const Text('将停止电脑上的实时监护和录像（如已开启），也会关闭本机预览，不会切断摄像头电源。'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -271,7 +275,7 @@ class _CameraScreenState extends State<CameraScreen>
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('停止监护'),
+              child: const Text('关闭摄像头'),
             ),
           ],
         ),
@@ -289,7 +293,15 @@ class _CameraScreenState extends State<CameraScreen>
       api = _api();
       final status = await api.cameraCommand(action);
       if (mounted && generation == _generation && scope == _scope) {
-        setState(() => _server = status);
+        setState(() {
+          _server = status;
+          if (action == 'stop') {
+            _connectionTimer?.cancel();
+            _stream = null;
+            _connecting = false;
+            _message = '已关闭摄像头监护。';
+          }
+        });
       }
     } on ApiException catch (error) {
       if (mounted && generation == _generation && scope == _scope) {
@@ -406,21 +418,9 @@ class _CameraScreenState extends State<CameraScreen>
         if (_message != null) InfoBanner(_message!, error: true),
         if (_statusError != null) InfoBanner(_statusError!, error: true),
         const SizedBox(height: 14),
-        if (_stream != null)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _stop,
-                icon: const Icon(Icons.stop_circle_outlined),
-                label: const Text('断开画面'),
-              ),
-            ],
-          ),
         const SizedBox(height: 10),
         const Text(
-          '连接后由电脑后端持续拉流，使用小模型检测与大模型复核。退出此页或断开画面后监护继续；后端服务须保持运行。',
+          '连接后由电脑后端持续拉流，使用小模型检测与大模型复核。退出此页不会停止监护；要结束监护和录像，请点击「关闭摄像头」。',
           style: TextStyle(fontSize: 12, color: Anju.muted, height: 1.6),
         ),
         const SectionTitle('摄像头连接'),
@@ -531,7 +531,7 @@ class _CameraScreenState extends State<CameraScreen>
             ),
             OutlinedButton(
               onPressed: _busy ? null : () => _backendCommand('stop'),
-              child: const Text('停止后端监护'),
+              child: const Text('关闭摄像头'),
             ),
           ],
         ),

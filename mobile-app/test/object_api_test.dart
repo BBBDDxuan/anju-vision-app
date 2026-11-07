@@ -8,6 +8,35 @@ import 'package:elder_safety_mobile/services/api.dart';
 
 void main() {
   test(
+    'camera HTTP failures identify the desktop route and permissions',
+    () async {
+      for (final (status, message) in [
+        (404, '未提供此摄像头接口'),
+        (401, '重新登录'),
+        (403, '权限'),
+      ]) {
+        final api = ObjectApi(
+          const ObjectServiceConfig(),
+          client: MockClient(
+            (_) async => http.Response('{"detail":"error"}', status),
+          ),
+        );
+        addTearDown(api.close);
+        await expectLater(
+          api.postJson('/api/monitoring/camera/stop'),
+          throwsA(
+            isA<ApiException>().having(
+              (e) => e.message,
+              'message',
+              contains(message),
+            ),
+          ),
+        );
+      }
+    },
+  );
+
+  test(
     'camera authentication failure is distinct from backend bearer rejection',
     () async {
       final api = ObjectApi(

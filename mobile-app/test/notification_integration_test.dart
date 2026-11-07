@@ -49,6 +49,31 @@ AlertSyncSnapshot snapshot(
 
 void main() {
   test(
+    'family account shows a notification only when a new candidate is confirmed',
+    () async {
+      final store = NoticeStore(), native = NativePresenter();
+      final binding = AppNotificationBinding(
+        android: native,
+        currentScope: () => scope,
+        canPresent: (_) => true,
+        accountId: 'family-member',
+        store: store,
+      );
+      addTearDown(binding.dispose);
+      await binding.accept(snapshot([alert(id1, 1)], initial: true));
+      final pending = {...alert(id2, 1), 'review_status': 'pending'};
+      expect(await binding.accept(snapshot([pending])), isEmpty);
+      expect(native.shown, isEmpty);
+
+      final confirmed = snapshot([alert(id2, 2)]);
+      expect((await binding.accept(confirmed)).single.id, id2);
+      expect(native.shown, ['$scope|$id2']);
+      expect(await binding.accept(confirmed), isEmpty);
+      expect(native.shown, ['$scope|$id2']);
+    },
+  );
+
+  test(
     'B full snapshots reach C: history silent, new alert once across restart',
     () async {
       final store = NoticeStore(), native = NativePresenter();

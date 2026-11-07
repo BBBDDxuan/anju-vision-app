@@ -55,6 +55,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
   bool _active = true;
   final _android = AndroidNotices();
   late final Future<void> _nativeReady;
+  bool _askedForNotificationPermission = false;
   final Set<String> _systemNotices = {};
 
   @override
@@ -107,6 +108,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
       await widget.controller.initialize();
       if (!mounted) return;
       _ready = true;
+      unawaited(_requestNotificationPermission());
       _consumeAlertOpens();
       if (_pendingOpens.isNotEmpty) {
         final id = _pendingOpens.last;
@@ -159,6 +161,24 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
     } catch (_) {
       // Native integration failure must not suppress the in-app warning.
       debugPrint('Android notification initialization failed');
+    }
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    if (!_ready ||
+        !_active ||
+        !mounted ||
+        widget.accountId == null ||
+        !AndroidNotices.supported ||
+        _askedForNotificationPermission) {
+      return;
+    }
+    _askedForNotificationPermission = true;
+    try {
+      await _android.requestPermission(automatic: true);
+    } catch (_) {
+      // The notification settings screen can retry and show the platform status.
+      debugPrint('Automatic Android notification permission request failed');
     }
   }
 
@@ -370,6 +390,7 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
     _active = state == AppLifecycleState.resumed;
     widget.controller.setActive(_active);
     if (_active) {
+      unawaited(_requestNotificationPermission());
       unawaited(_updates.check());
       _updateChanged();
     }
@@ -403,14 +424,17 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
           ),
           DevicesScreen(controller: controller, openEvent: _openEvent),
           HistoryScreen(controller: controller, openEvent: _openEvent),
-          SettingsScreen(
-            controller: controller,
-            openMembers: _openMembers,
-            updates: _updates,
-            accountLabel: widget.accountLabel,
-            accountDisplayName: widget.accountDisplayName,
-            accountId: widget.accountId,
-            onAccountLogout: widget.onAccountLogout,
+          ListenableBuilder(
+            listenable: _updates,
+            builder: (context, child) => SettingsScreen(
+              controller: controller,
+              openMembers: _openMembers,
+              updates: _updates,
+              accountLabel: widget.accountLabel,
+              accountDisplayName: widget.accountDisplayName,
+              accountId: widget.accountId,
+              onAccountLogout: widget.onAccountLogout,
+            ),
           ),
         ];
         return PopScope(
@@ -445,10 +469,20 @@ class _ElderSafetyAppState extends State<ElderSafetyApp>
                 Padding(
                   padding: const EdgeInsets.only(right: 20),
                   child: Center(
-                    child: Pill(
-                      _tab == 3 ? 'v1.3.0' : '家庭守护',
-                      icon: Icons.shield_outlined,
-                    ),
+                    child: _tab == 3
+                        ? ListenableBuilder(
+                            listenable: _updates,
+                            builder: (context, child) {
+                              final version = _updates.installed?.name;
+                              return Pill(
+                                version == null || version.isEmpty
+                                    ? '版本未知'
+                                    : 'v$version',
+                                icon: Icons.shield_outlined,
+                              );
+                            },
+                          )
+                        : const Pill('家庭守护', icon: Icons.shield_outlined),
                   ),
                 ),
               ],

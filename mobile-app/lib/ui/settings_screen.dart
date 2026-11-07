@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final c = widget.controller;
     final name = c.preferences.contactName(c.settings.contactId);
+    final version = widget.updates?.installed?.name;
     final initials = (widget.accountDisplayName ?? '')
         .trim()
         .characters
@@ -221,9 +222,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const BrandMark(size: 32),
               const SizedBox(height: 10),
-              const Text(
-                '安居视界  1.3.0',
-                style: TextStyle(
+              Text(
+                version == null || version.isEmpty ? '安居视界' : '安居视界  $version',
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Anju.muted,
@@ -239,8 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () => showAboutDialog(
                   context: context,
                   applicationName: '安居视界',
-                  applicationVersion:
-                      widget.updates?.installed?.name ?? '1.3.0',
+                  applicationVersion: version,
                   applicationIcon: const BrandMark(size: 48),
                   children: [
                     const Text('居家安全事件提醒与家庭协作。AI 信息用于辅助核实；请结合实际情况处理。'),

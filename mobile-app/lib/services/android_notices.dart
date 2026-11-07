@@ -94,10 +94,13 @@ class AndroidNotices {
     return AndroidNotificationStatus.fromMap(data);
   }
 
-  Future<AndroidNotificationStatus?> requestPermission() async {
+  Future<AndroidNotificationStatus?> requestPermission({
+    bool automatic = false,
+  }) async {
     if (!supported) return null;
     final data = await _channel.invokeMapMethod<Object?, Object?>(
       'requestPermission',
+      automatic ? {'automatic': true} : null,
     );
     if (data == null) throw StateError('Android 未返回通知权限状态');
     return AndroidNotificationStatus.fromMap(data);

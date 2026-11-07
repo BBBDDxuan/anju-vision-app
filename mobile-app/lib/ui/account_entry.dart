@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -24,9 +25,10 @@ class _AuthError implements Exception {
 
 String? _address(String input) {
   final value = input.trim().replaceAll(RegExp(r'/+$'), '');
+  final uri = Uri.tryParse(value);
   return AppSettings(baseUrl: value).validationError == null &&
-          Uri.tryParse(value)?.scheme == 'https'
-      ? value
+          uri?.scheme == 'https'
+      ? uri!.origin
       : null;
 }
 
@@ -53,8 +55,22 @@ Future<Map<String, dynamic>> _auth(
     if (response.statusCode >= 300 && response.statusCode < 400) {
       throw const _AuthError(0, '后端地址发生跳转，请直接填写正确的服务地址。');
     }
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) throw const FormatException();
+    if (response.statusCode == 404 || response.statusCode == 405) {
+      throw const _AuthError(0, '已连接电脑，但这个地址没有可用的账号接口。请核对手机网关地址和端口。');
+    }
+    Map<String, dynamic> decoded;
+    try {
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic>) throw const FormatException();
+      decoded = data;
+    } on FormatException {
+      throw _AuthError(
+        0,
+        response.statusCode >= 500
+            ? '电脑账号服务暂时不可用（HTTP ${response.statusCode}），请检查网关日志后重试。'
+            : '该地址返回的内容不是安居视界账号数据，请核对电脑的手机网关地址。',
+      );
+    }
     if (response.statusCode != 200) {
       final error = decoded['error'];
       throw _AuthError(
@@ -67,8 +83,19 @@ Future<Map<String, dynamic>> _auth(
     return decoded;
   } on _AuthError {
     rethrow;
-  } catch (_) {
-    throw const _AuthError(0, '无法连接账号服务，请检查后端地址、网络或 HTTPS 证书。');
+  } on TimeoutException {
+    throw const _AuthError(0, '连接电脑超时。请核对电脑当前的 Wi-Fi 地址，并确认手机和电脑的网络互通。');
+  } on TlsException catch (error) {
+    final details = '${error.message} ${error.osError?.message ?? ''}'
+        .toUpperCase();
+    if (details.contains('CERTIFICATE_VERIFY_FAILED')) {
+      throw const _AuthError(0, 'HTTPS 证书校验失败。请在电脑生成新的连接二维码，再用 App 扫码。');
+    }
+    throw const _AuthError(0, 'HTTPS 握手失败。请确认电脑以 HTTPS 模式启动手机网关。');
+  } on SocketException {
+    throw const _AuthError(0, '连不上电脑的账号端口。请核对地址和端口，并确认手机网关已启动。');
+  } on http.ClientException {
+    throw const _AuthError(0, '连接账号服务时中断。请检查电脑网关和手机网络后重试。');
   } finally {
     client.close();
   }
@@ -119,12 +146,13 @@ class _AccountEntryState extends State<AccountEntry>
 
   Future<void> _restore() async {
     try {
+      await loadLocalBackendTrust();
       final previous =
           await _storage.read(key: _addressKey) ??
           (await SecureSettingsStore().load()).baseUrl;
       if (!mounted) return;
       if (previous == defaultApiBaseUrl) {
-        _origin.text = localBackendOrigin;
+        _origin.text = '';
       } else {
         final uri = Uri.tryParse(previous);
         if (uri != null && uri.hasAuthority && uri.scheme == 'http') {
@@ -255,37 +283,65 @@ class _AccountEntryState extends State<AccountEntry>
           ? _address(data['origin'] as String)
           : null;
       if (origin == null) {
-        throw const _AuthError(0, '此二维码不含 HTTPS 地址，请在电脑生成新版二维码。');
+        throw const _AuthError(
+          0,
+          '二维码中的地址无法用于 HTTPS 登录。请在电脑启动 HTTPS 手机网关后重新生成。',
+        );
       }
       final kind = data['kind'];
-      if (invite) {
-        final code = data['code'];
-        if (kind != 'anju-invite-v1' ||
-            code is! String ||
-            !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(code)) {
+      final login = kind == 'anju-login-v1';
+      final code = data['code'];
+      if (invite
+          ? kind != 'anju-invite-v1'
+          : !login && kind != 'anju-server-v1' && kind != 'anju-pair-v1') {
+        throw const FormatException();
+      }
+      if ((invite || login) &&
+          (code is! String || !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(code))) {
+        throw const FormatException();
+      }
+
+      final caPin = data['ca_sha256'];
+      final tlsPin = data['tls_sha256'];
+      if (caPin != null || tlsPin != null) {
+        if (caPin is! String || tlsPin is! String)
           throw const FormatException();
+        await pairBackendTrust(origin, caSha256: caPin, tlsSha256: tlsPin);
+      } else if (!invite && !login) {
+        final status = await _auth(origin, 'status');
+        if (status['enabled'] != true) {
+          throw const _AuthError(0, '已连接电脑，但该地址没有启用账号服务。');
         }
-        _origin.text = origin;
+      }
+
+      if (!mounted) return;
+      _origin.text = origin;
+      await _storage.write(key: _addressKey, value: origin);
+      if (!mounted) return;
+      if (login) {
+        final result = await _auth(
+          origin,
+          'login-code/exchange',
+          body: {'code': code},
+        );
+        await _open(origin, result['token'] as String, result);
+      } else if (invite) {
         setState(() {
-          _invite = code;
+          _invite = code as String;
           _inviteOrigin = origin;
           _household = null;
         });
         await _inviteInfo(origin);
       } else {
-        if (kind != 'anju-server-v1' && kind != 'anju-pair-v1')
-          throw const FormatException();
-        _origin.text = origin;
-        setState(() {
-          _invite = null;
-          _inviteOrigin = null;
-          _household = null;
-        });
+        setState(() => _message = '已连接电脑，请输入家庭账号和密码。');
       }
+    } on BackendPairingException catch (error) {
+      if (mounted) setState(() => _message = error.message);
     } on _AuthError catch (error) {
       if (mounted) setState(() => _message = error.message);
     } catch (_) {
-      if (mounted) setState(() => _message = '这不是有效的安居视界电脑地址码或邀请二维码。');
+      if (mounted)
+        setState(() => _message = '无法读取此二维码，请在电脑生成与 App 扫码入口对应的二维码。');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -318,10 +374,10 @@ class _AccountEntryState extends State<AccountEntry>
       }
       if (_password.text.isEmpty ||
           (register &&
-              (_password.text.length < 12 ||
+              (_password.text.runes.length < 8 ||
                   _password.text != _confirm.text ||
                   _name.text.trim().isEmpty))) {
-        throw const _AuthError(422, '请填写密码；注册密码至少 12 个字符，两次输入一致，并填写显示名称。');
+        throw const _AuthError(422, '请填写密码；注册密码至少 8 个字符，两次输入一致，并填写昵称。');
       }
       final result = await _auth(
         origin,
@@ -408,7 +464,7 @@ class _AccountEntryState extends State<AccountEntry>
                                 ? null
                                 : () => _scanWithContext(context, false),
                             icon: const Icon(Icons.qr_code_scanner),
-                            label: const Text('扫码填写地址'),
+                            label: const Text('扫码连接或登录'),
                           ),
                           OutlinedButton.icon(
                             onPressed: _busy
@@ -434,7 +490,7 @@ class _AccountEntryState extends State<AccountEntry>
                         controller: _name,
                         enabled: !_busy,
                         maxLength: 40,
-                        decoration: const InputDecoration(labelText: '显示名称'),
+                        decoration: const InputDecoration(labelText: '昵称'),
                       ),
                     TextField(
                       controller: _password,
